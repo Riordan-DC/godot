@@ -564,6 +564,9 @@ private:
 	Transform joint_offset;
 	RID joint;
 
+	// Riordans edits
+	NodePath skeleton_path;
+
 	Skeleton *parent_skeleton;
 	Transform body_offset;
 	Transform body_offset_inverse;
@@ -646,6 +649,12 @@ public:
 	void apply_central_impulse(const Vector3 &p_impulse);
 	void apply_impulse(const Vector3 &p_pos, const Vector3 &p_impulse);
 
+	void set_skeleton_path(const NodePath &p_skeleton_path);
+	NodePath get_skeleton_path();
+
+	//void set_skeleton(const Skeleton &skeleton);
+	//Skeleton* get_skeleton();
+	
 	PhysicalBone();
 	~PhysicalBone();
 

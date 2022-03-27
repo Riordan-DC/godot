@@ -2260,7 +2260,7 @@ bool PhysicalBone::_get(const StringName &p_name, Variant &r_ret) const {
 }
 
 void PhysicalBone::_get_property_list(List<PropertyInfo> *p_list) const {
-	Skeleton *parent = find_skeleton_parent(get_parent());
+	Skeleton *parent = Object::cast_to<Skeleton>(get_node(skeleton_path)); //find_skeleton_parent(get_parent());
 
 	if (parent) {
 		String names;
@@ -2284,7 +2284,7 @@ void PhysicalBone::_get_property_list(List<PropertyInfo> *p_list) const {
 void PhysicalBone::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE:
-			parent_skeleton = find_skeleton_parent(get_parent());
+			parent_skeleton = Object::cast_to<Skeleton>(get_node(skeleton_path)); //find_skeleton_parent(get_parent());
 			update_bone_id();
 			reset_to_rest_position();
 			_reset_physics_simulation_state();
@@ -2339,6 +2339,26 @@ void PhysicalBone::_direct_state_changed(Object *p_state) {
 	}
 }
 
+void PhysicalBone::set_skeleton_path(const NodePath &p_skeleton_path) {
+	skeleton_path = p_skeleton_path;
+	if (!is_inside_tree()) {
+		return;
+	}
+	// get node
+}
+
+NodePath PhysicalBone::get_skeleton_path() {
+	return skeleton_path;
+}
+/*
+void PhysicalBone::set_skeleton(const Skeleton &skeleton) {
+	parent_skeleton = skeleton;
+}
+
+Skeleton* PhysicalBone::get_skeleton() {
+	return parent_skeleton;
+}*/
+
 void PhysicalBone::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("apply_central_impulse", "impulse"), &PhysicalBone::apply_central_impulse);
 	ClassDB::bind_method(D_METHOD("apply_impulse", "position", "impulse"), &PhysicalBone::apply_impulse);
@@ -2377,11 +2397,22 @@ void PhysicalBone::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_gravity_scale", "gravity_scale"), &PhysicalBone::set_gravity_scale);
 	ClassDB::bind_method(D_METHOD("get_gravity_scale"), &PhysicalBone::get_gravity_scale);
 
+	ClassDB::bind_method(D_METHOD("set_skeleton_path", "skeleton_path"), &PhysicalBone::set_skeleton_path);
+	ClassDB::bind_method(D_METHOD("get_skeleton_path"), &PhysicalBone::get_skeleton_path);
+
+	ClassDB::bind_method(D_METHOD("set_simulate_physics"), &PhysicalBone::set_simulate_physics);
+	ClassDB::bind_method(D_METHOD("set_static_body"), &PhysicalBone::set_static_body);
+
 	ADD_GROUP("Joint", "joint_");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "joint_type", PROPERTY_HINT_ENUM, "None,PinJoint,ConeJoint,HingeJoint,SliderJoint,6DOFJoint"), "set_joint_type", "get_joint_type");
 	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM, "joint_offset"), "set_joint_offset", "get_joint_offset");
 
 	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM, "body_offset"), "set_body_offset", "get_body_offset");
+
+	//ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "skeleton_path"), "set_skeleton_path", "get_skeleton_path");
+	//ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "parent_skeleton"), "set_skeleton", "get_skeleton");
+	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "skeleton_path", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "Skeleton"), "set_skeleton_path", "get_skeleton_path");
+	//ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "parent_skeleton", PROPERTY_HINT_RESOURCE_TYPE, "Skeleton"), "set_skeleton", "get_skeleton");
 
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "mass", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01"), "set_mass", "get_mass");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "weight", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01"), "set_weight", "get_weight");
