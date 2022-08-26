@@ -78,6 +78,12 @@ public:
 		};
 		Type type;
 		float fov;
+
+		bool use_oblique_frustum;
+		Vector3 oblique_normal;
+		Vector3 oblique_position;
+		float oblique_offset;
+
 		float znear, zfar;
 		float size;
 		Vector2 offset;
@@ -107,6 +113,7 @@ public:
 	virtual void camera_initialize(RID p_rid);
 
 	virtual void camera_set_perspective(RID p_camera, float p_fovy_degrees, float p_z_near, float p_z_far);
+	virtual void camera_set_oblique_plane(RID p_camera, bool p_use_oblique_frustum, const Vector3 &p_ob_normal, const Vector3 &p_ob_position, float p_ob_offset);
 	virtual void camera_set_orthogonal(RID p_camera, float p_size, float p_z_near, float p_z_far);
 	virtual void camera_set_frustum(RID p_camera, float p_size, Vector2 p_offset, float p_z_near, float p_z_far);
 	virtual void camera_set_transform(RID p_camera, const Transform3D &p_transform);
@@ -116,6 +123,7 @@ public:
 	virtual void camera_set_compositor(RID p_camera, RID p_compositor);
 	virtual void camera_set_use_vertical_aspect(RID p_camera, bool p_enable);
 	virtual bool is_camera(RID p_camera) const;
+	virtual Vector4 get_camera_oblique_plane(RID p_camera);
 
 	/* OCCLUDER API */
 
