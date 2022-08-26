@@ -312,6 +312,7 @@ public:
 		// Main/center projection
 		Transform3D main_transform;
 		Projection main_projection;
+		Projection shadow_projection;
 
 		Transform3D view_offset[RendererSceneRender::MAX_RENDER_VIEWS];
 		Projection view_projection[RendererSceneRender::MAX_RENDER_VIEWS];
