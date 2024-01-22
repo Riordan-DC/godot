@@ -208,6 +208,14 @@ float AnimationNodeOneShot::process(float p_time, bool p_seek) {
 	float remaining = get_parameter(this->remaining);
 	float time_to_restart = get_parameter(this->time_to_restart);
 
+	if (do_restart) {
+		set_parameter(this->active, true);
+		set_parameter(this->prev_active, false);
+		active = true;
+		prev_active = false;
+		do_restart = false;
+	}
+
 	if (!active) {
 		//make it as if this node doesn't exist, pass input 0 by.
 		if (prev_active) {
@@ -299,6 +307,10 @@ bool AnimationNodeOneShot::is_using_sync() const {
 	return sync;
 }
 
+void AnimationNodeOneShot::restart() {
+	do_restart = true;
+}
+
 void AnimationNodeOneShot::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_fadein_time", "time"), &AnimationNodeOneShot::set_fadein_time);
 	ClassDB::bind_method(D_METHOD("get_fadein_time"), &AnimationNodeOneShot::get_fadein_time);
@@ -320,6 +332,8 @@ void AnimationNodeOneShot::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_use_sync", "enable"), &AnimationNodeOneShot::set_use_sync);
 	ClassDB::bind_method(D_METHOD("is_using_sync"), &AnimationNodeOneShot::is_using_sync);
+
+	ClassDB::bind_method(D_METHOD("restart"), &AnimationNodeOneShot::restart);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "mix_mode", PROPERTY_HINT_ENUM, "Blend,Add"), "set_mix_mode", "get_mix_mode");
 
@@ -348,6 +362,7 @@ AnimationNodeOneShot::AnimationNodeOneShot() {
 	autorestart = false;
 	autorestart_delay = 1;
 	autorestart_random_delay = 0;
+	do_restart = false;
 
 	mix = MIX_MODE_BLEND;
 	sync = false;

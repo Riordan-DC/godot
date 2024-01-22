@@ -80,6 +80,7 @@ private:
 	MixMode mix;
 
 	bool sync;
+	bool do_restart;
 
 	/*	bool active;
 	bool do_start;
@@ -100,6 +101,8 @@ public:
 	virtual Variant get_parameter_default_value(const StringName &p_parameter) const;
 
 	virtual String get_caption() const;
+
+	void restart();
 
 	void set_fadein_time(float p_time);
 	void set_fadeout_time(float p_time);
