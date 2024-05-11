@@ -1,0 +1,8 @@
+*.obj
+*.pyc
+*.o
+*.autosave
+*.bc
+*.d
+*.log
+old_git
