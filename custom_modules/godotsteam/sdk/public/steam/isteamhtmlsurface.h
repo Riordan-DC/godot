@@ -82,6 +82,7 @@ public:
 	// nDelta is pixels of scroll
 	virtual void MouseWheel( HHTMLBrowser unBrowserHandle, int32 nDelta ) = 0;
 
+<<<<<<< HEAD
 	enum EHTMLMouseCursor
 	{
 		k_EHTMLMouseCursor_User = 0,
@@ -129,6 +130,53 @@ public:
 		k_EHTMLMouseCursor_SizeNESW,
 
 		k_EHTMLMouseCursor_last, // custom cursors start from this value and up
+=======
+	enum EMouseCursor
+	{
+		dc_user = 0,
+		dc_none,
+		dc_arrow,
+		dc_ibeam,
+		dc_hourglass,
+		dc_waitarrow,
+		dc_crosshair,
+		dc_up,
+		dc_sizenw,
+		dc_sizese,
+		dc_sizene,
+		dc_sizesw,
+		dc_sizew,
+		dc_sizee,
+		dc_sizen,
+		dc_sizes,
+		dc_sizewe,
+		dc_sizens,
+		dc_sizeall,
+		dc_no,
+		dc_hand,
+		dc_blank, // don't show any custom cursor, just use your default
+		dc_middle_pan,
+		dc_north_pan,
+		dc_north_east_pan,
+		dc_east_pan,
+		dc_south_east_pan,
+		dc_south_pan,
+		dc_south_west_pan,
+		dc_west_pan,
+		dc_north_west_pan,
+		dc_alias,
+		dc_cell,
+		dc_colresize,
+		dc_copycur,
+		dc_verticaltext,
+		dc_rowresize,
+		dc_zoomin,
+		dc_zoomout,
+		dc_help,
+		dc_custom,
+
+		dc_last, // custom cursors start from this value and up
+>>>>>>> 502ae11a7c (steam sdk)
 	};
 
 	enum EHTMLKeyModifiers
@@ -427,7 +475,11 @@ STEAM_CALLBACK_END(7)
 //-----------------------------------------------------------------------------
 STEAM_CALLBACK_BEGIN( HTML_SetCursor_t, k_iSteamHTMLSurfaceCallbacks + 22 )
 STEAM_CALLBACK_MEMBER( 0, HHTMLBrowser, unBrowserHandle ) // the handle of the surface 
+<<<<<<< HEAD
 STEAM_CALLBACK_MEMBER( 1, uint32, eMouseCursor ) // the EHTMLMouseCursor to display
+=======
+STEAM_CALLBACK_MEMBER( 1, uint32, eMouseCursor ) // the EMouseCursor to display
+>>>>>>> 502ae11a7c (steam sdk)
 STEAM_CALLBACK_END(2)
 
 
@@ -436,7 +488,11 @@ STEAM_CALLBACK_END(2)
 //-----------------------------------------------------------------------------
 STEAM_CALLBACK_BEGIN( HTML_StatusText_t, k_iSteamHTMLSurfaceCallbacks + 23 )
 STEAM_CALLBACK_MEMBER( 0, HHTMLBrowser, unBrowserHandle ) // the handle of the surface 
+<<<<<<< HEAD
 STEAM_CALLBACK_MEMBER( 1, const char *, pchMsg ) // the message text
+=======
+STEAM_CALLBACK_MEMBER( 1, const char *, pchMsg ) // the EMouseCursor to display
+>>>>>>> 502ae11a7c (steam sdk)
 STEAM_CALLBACK_END(2)
 
 
@@ -445,7 +501,11 @@ STEAM_CALLBACK_END(2)
 //-----------------------------------------------------------------------------
 STEAM_CALLBACK_BEGIN( HTML_ShowToolTip_t, k_iSteamHTMLSurfaceCallbacks + 24 )
 STEAM_CALLBACK_MEMBER( 0, HHTMLBrowser, unBrowserHandle ) // the handle of the surface 
+<<<<<<< HEAD
 STEAM_CALLBACK_MEMBER( 1, const char *, pchMsg ) // the tooltip text
+=======
+STEAM_CALLBACK_MEMBER( 1, const char *, pchMsg ) // the EMouseCursor to display
+>>>>>>> 502ae11a7c (steam sdk)
 STEAM_CALLBACK_END(2)
 
 
@@ -454,7 +514,11 @@ STEAM_CALLBACK_END(2)
 //-----------------------------------------------------------------------------
 STEAM_CALLBACK_BEGIN( HTML_UpdateToolTip_t, k_iSteamHTMLSurfaceCallbacks + 25 )
 STEAM_CALLBACK_MEMBER( 0, HHTMLBrowser, unBrowserHandle ) // the handle of the surface 
+<<<<<<< HEAD
 STEAM_CALLBACK_MEMBER( 1, const char *, pchMsg ) // the new tooltip text
+=======
+STEAM_CALLBACK_MEMBER( 1, const char *, pchMsg ) // the EMouseCursor to display
+>>>>>>> 502ae11a7c (steam sdk)
 STEAM_CALLBACK_END(2)
 
 

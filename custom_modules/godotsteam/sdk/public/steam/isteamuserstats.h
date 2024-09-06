@@ -88,11 +88,17 @@ struct LeaderboardEntry_t
 class ISteamUserStats
 {
 public:
+<<<<<<< HEAD
 
 	// Note: this call is no longer required as it is managed by the Steam client
 	// The game stats and achievements will be synchronized with Steam before
 	// the game process begins.
 	// virtual bool RequestCurrentStats() = 0;
+=======
+	// Ask the server to send down this user's data and achievements for this game
+	STEAM_CALL_BACK( UserStatsReceived_t )
+	virtual bool RequestCurrentStats() = 0;
+>>>>>>> 502ae11a7c (steam sdk)
 
 	// Data accessors
 	STEAM_FLAT_NAME( GetStatInt32 )
@@ -305,7 +311,11 @@ public:
 
 };
 
+<<<<<<< HEAD
 #define STEAMUSERSTATS_INTERFACE_VERSION "STEAMUSERSTATS_INTERFACE_VERSION013"
+=======
+#define STEAMUSERSTATS_INTERFACE_VERSION "STEAMUSERSTATS_INTERFACE_VERSION012"
+>>>>>>> 502ae11a7c (steam sdk)
 
 // Global interface accessor
 inline ISteamUserStats *SteamUserStats();
@@ -460,6 +470,22 @@ struct LeaderboardUGCSet_t
 
 
 //-----------------------------------------------------------------------------
+<<<<<<< HEAD
+=======
+// Purpose: callback indicating that PS3 trophies have been installed
+//-----------------------------------------------------------------------------
+struct PS3TrophiesInstalled_t
+{
+	enum { k_iCallback = k_iSteamUserStatsCallbacks + 12 };
+	uint64	m_nGameID;				// Game these stats are for
+	EResult m_eResult;				// The result of the operation
+	uint64 m_ulRequiredDiskSpace;	// If m_eResult is k_EResultDiskFull, will contain the amount of space needed to install trophies
+
+};
+
+
+//-----------------------------------------------------------------------------
+>>>>>>> 502ae11a7c (steam sdk)
 // Purpose: callback indicating global stats have been received.
 //	Returned as a result of RequestGlobalStats()
 //-----------------------------------------------------------------------------

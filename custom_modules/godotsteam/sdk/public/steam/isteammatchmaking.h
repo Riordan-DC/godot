@@ -249,6 +249,16 @@ public:
 	// link two lobbies for the purposes of checking player compatibility
 	// you must be the lobby owner of both lobbies
 	virtual bool SetLinkedLobby( CSteamID steamIDLobby, CSteamID steamIDLobbyDependent ) = 0;
+<<<<<<< HEAD
+=======
+
+#ifdef _PS3
+	// changes who the lobby owner is
+	// you must be the lobby owner for this to succeed, and steamIDNewOwner must be in the lobby
+	// after completion, the local user will no longer be the owner
+	virtual void CheckForPSNGameBootInvite( unsigned int iGameBootAttributes  ) = 0;
+#endif
+>>>>>>> 502ae11a7c (steam sdk)
 };
 #define STEAMMATCHMAKING_INTERFACE_VERSION "SteamMatchMaking009"
 
@@ -880,8 +890,26 @@ struct LobbyCreated_t
 // used by now obsolete RequestFriendsLobbiesResponse_t
 // enum { k_iCallback = k_iSteamMatchmakingCallbacks + 14 };
 
+<<<<<<< HEAD
 // used by now obsolete PSNGameBootInviteResult_t
 // enum { k_iCallback = k_iSteamMatchmakingCallbacks + 15 };
+=======
+
+//-----------------------------------------------------------------------------
+// Purpose: Result of CheckForPSNGameBootInvite
+//			m_eResult == k_EResultOK on success
+//			at this point, the local user may not have finishing joining this lobby;
+//			game code should wait until the subsequent LobbyEnter_t callback is received
+//-----------------------------------------------------------------------------
+struct PSNGameBootInviteResult_t
+{
+	enum { k_iCallback = k_iSteamMatchmakingCallbacks + 15 };
+
+	bool m_bGameBootInviteExists;
+	CSteamID m_steamIDLobby;		// Should be valid if m_bGameBootInviteExists == true
+};
+
+>>>>>>> 502ae11a7c (steam sdk)
 
 //-----------------------------------------------------------------------------
 // Purpose: Result of our request to create a Lobby

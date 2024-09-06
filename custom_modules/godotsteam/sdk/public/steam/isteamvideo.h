@@ -60,6 +60,7 @@ STEAM_CALLBACK_BEGIN( GetOPFSettingsResult_t, k_iSteamVideoCallbacks + 24 )
 	STEAM_CALLBACK_MEMBER( 1, AppId_t, m_unVideoAppID )
 STEAM_CALLBACK_END(2)
 
+<<<<<<< HEAD
 STEAM_CALLBACK_BEGIN( BroadcastUploadStart_t, k_iSteamVideoCallbacks + 4 )
 	STEAM_CALLBACK_MEMBER( 0, bool, m_bIsRTMP )
 STEAM_CALLBACK_END( 1 )
@@ -67,6 +68,8 @@ STEAM_CALLBACK_END( 1 )
 STEAM_CALLBACK_BEGIN( BroadcastUploadStop_t, k_iSteamVideoCallbacks + 5 )
 	STEAM_CALLBACK_MEMBER( 0, EBroadcastUploadResult, m_eResult )
 STEAM_CALLBACK_END( 1 )
+=======
+>>>>>>> 502ae11a7c (steam sdk)
 
 #pragma pack( pop )
 

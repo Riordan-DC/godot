@@ -482,11 +482,14 @@ enum EInputActionOrigin
 	k_EInputActionOrigin_SteamDeck_Reserved19,
 	k_EInputActionOrigin_SteamDeck_Reserved20,
 
+<<<<<<< HEAD
 	k_EInputActionOrigin_Horipad_M1,
 	k_EInputActionOrigin_Horipad_M2,
 	k_EInputActionOrigin_Horipad_L4,
 	k_EInputActionOrigin_Horipad_R4,
 
+=======
+>>>>>>> 502ae11a7c (steam sdk)
 	k_EInputActionOrigin_Count, // If Steam has added support for new controllers origins will go here.
 	k_EInputActionOrigin_MaximumPossibleValue = 32767, // Origins are currently a maximum of 16 bits.
 };
@@ -648,6 +651,7 @@ struct InputDigitalActionData_t
 
 struct InputMotionData_t
 {
+<<<<<<< HEAD
 	// Gyro Quaternion:
 	// Absolute rotation of the controller since wakeup, using the Accelerometer reading at startup to determine the first value.
 	// This means real world "up" is know, but heading is not known.
@@ -660,12 +664,16 @@ struct InputMotionData_t
 
 	// Filtering: When rotating the controller at low speeds, low level noise is filtered out without noticeable latency. High speed movement is always unfiltered.
 	// Drift: Gyroscopic "Drift" can be fixed using the Steam Input "Gyro Calibration" button. Users will have to be informed of this feature.
+=======
+	// Sensor-fused absolute rotation; will drift in heading toward average
+>>>>>>> 502ae11a7c (steam sdk)
 	float rotQuatX;
 	float rotQuatY;
 	float rotQuatZ;
 	float rotQuatW;
 
 	// Positional acceleration
+<<<<<<< HEAD
 	// This represents only the latest hardware packet's state.
 	// Values range from -SHRT_MAX..SHRT_MAX
 	// This represents -2G..+2G along each axis
@@ -680,6 +688,16 @@ struct InputMotionData_t
 	float rotVelX; // Local Pitch
 	float rotVelY; // Local Roll
 	float rotVelZ; // Local Yaw
+=======
+	float posAccelX;
+	float posAccelY;
+	float posAccelZ;
+
+	// Angular velocity
+	float rotVelX;
+	float rotVelY;
+	float rotVelZ;
+>>>>>>> 502ae11a7c (steam sdk)
 };
 
 //-----------------------------------------------------------------------------
