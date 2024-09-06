@@ -16,8 +16,8 @@ __pycache__/
 *.pyc
 
 # Steam SDK
-sdk/*
-!sdk/put SDK here
+#sdk/*
+#!sdk/put SDK here
 
 # Doxygen
 doxygen/
