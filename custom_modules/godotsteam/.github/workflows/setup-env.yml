@@ -13,7 +13,6 @@ on:
         required: true
         type: string
 
-
     outputs:
       godot_version:
         description: The shortened Godot version for file names
