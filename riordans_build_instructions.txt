@@ -1,29 +1,11 @@
 https://docs.godotengine.org/en/stable/contributing/development/compiling/compiling_for_windows.html
 
-editor
-------
-scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules profile=custom.py
+scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules
 
-templates
----------
-scons platform=windows target=template_debug arch=x86_64 custom_modules=./custom_modules -j10 profile=custom.py
-scons platform=web target=template_debug arch=x86_64 custom_modules=./custom_modules -j10 profile=custom.py
 
-scons platform=windows target=template_release arch=x86_64 -j10 profile=app.py
+scons platform=windows target=template_debug arch=x86_64 custom_modules=./custom_modules -j10
 
-VS Project
-----------
-scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules vsproj=yes debug_symbols=true
 
 I NEED A FEATURE FROM A PR!!! 
 Do this to cherry-pick the feature for our version.
 https://stackoverflow.com/questions/5120038/is-it-possible-to-cherry-pick-a-commit-from-another-git-repository
-
-updating to a newer godot requires rebase
-
-git rebase upstream/master
-
-
-
-import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
