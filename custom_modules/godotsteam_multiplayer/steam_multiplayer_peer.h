@@ -61,6 +61,11 @@ public:
 	virtual int get_unique_id() const override;
 	virtual ConnectionStatus get_connection_status() const override;
 
+	void set_existing_lobby(uint64_t lobbyId) {
+		lobby_state = LOBBY_STATE::LOBBY_STATE_HOSTING;
+		this->lobby_id.SetFromUint64(lobbyId);
+	}
+
 	// all SteamGodot from here on down
 
 	enum CHANNEL_MANAGEMENT {

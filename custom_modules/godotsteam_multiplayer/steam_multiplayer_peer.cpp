@@ -31,6 +31,7 @@ uint64_t SteamMultiplayerPeer::get_lobby_id() {
 
 void SteamMultiplayerPeer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_lobby", "lobby_type", "max_players"), &SteamMultiplayerPeer::create_lobby, DEFVAL(32));
+	ClassDB::bind_method(D_METHOD("set_existing_lobby", "lobby_id"), &SteamMultiplayerPeer::set_existing_lobby);
 	ClassDB::bind_method(D_METHOD("connect_lobby", "lobby_id"), &SteamMultiplayerPeer::join_lobby);
 	ClassDB::bind_method(D_METHOD("get_state"), &SteamMultiplayerPeer::get_state);
 	ClassDB::bind_method(D_METHOD("get_lobby_id"), &SteamMultiplayerPeer::get_lobby_id);
