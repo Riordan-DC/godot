@@ -1,0 +1,3 @@
+[submodule "custom_modules/godot_voxel"]
+	path = custom_modules/godot_voxel
+	url = https://github.com/Zylann/godot_voxel.git
