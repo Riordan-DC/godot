@@ -1,10 +1,18 @@
 https://docs.godotengine.org/en/stable/contributing/development/compiling/compiling_for_windows.html
 
+editor
+------
 scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules
 
+templates
+---------
+scons platform=windows target=template_debug arch=x86_64 custom_modules=./custom_modules -j10 profile=custom.py
+scons platform=web target=template_debug arch=x86_64 custom_modules=./custom_modules -j10 profile=custom.py
 
-scons platform=windows target=template_debug arch=x86_64 custom_modules=./custom_modules -j10
 
+VS Project
+----------
+scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules vsproj=yes debug_symbols=true
 
 I NEED A FEATURE FROM A PR!!! 
 Do this to cherry-pick the feature for our version.
