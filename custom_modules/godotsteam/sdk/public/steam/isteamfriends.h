@@ -117,6 +117,7 @@ enum
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 //-----------------------------------------------------------------------------
 // Purpose: user restriction flags
@@ -134,6 +135,8 @@ enum EUserRestriction
 };
 
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 // size limit on chat room or member metadata
 const uint32 k_cubChatMetadataMax = 8192;
 
@@ -206,6 +209,7 @@ public:
 	virtual const char *GetPersonaName() = 0;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	// Sets the player name, stores it on the server and publishes the changes to all friends who are online.
 	// Changes take place locally immediately, and a PersonaStateChange_t is posted, presuming success.
@@ -218,6 +222,8 @@ public:
 	virtual SteamAPICall_t SetPersonaName( const char *pchPersonaName ) = 0;
 
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 	// gets the status of the current user
 	virtual EPersonaState GetPersonaState() = 0;
 
@@ -364,12 +370,15 @@ public:
 	// returns the steamID of a clan officer, by index, of range [0,GetClanOfficerCount)
 	virtual CSteamID GetClanOfficerByIndex( CSteamID steamIDClan, int iOfficer ) = 0;
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	// if current user is chat restricted, he can't send or receive any text/voice chat messages.
 	// the user can't see custom avatars. But the user can be online and send/recv game invites.
 	// a chat restricted user can't add friends or join any groups.
 	virtual uint32 GetUserRestrictions() = 0;
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 	// Rich Presence data is automatically shared between friends who are in the same game
 	// Each user has a set of Key/Value pairs
@@ -472,10 +481,14 @@ public:
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 #define STEAMFRIENDS_INTERFACE_VERSION "SteamFriends018"
 =======
 #define STEAMFRIENDS_INTERFACE_VERSION "SteamFriends017"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+#define STEAMFRIENDS_INTERFACE_VERSION "SteamFriends018"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 // Global interface accessor
 inline ISteamFriends *SteamFriends();
@@ -561,12 +574,15 @@ struct GameLobbyJoinRequested_t
 
 	// The friend they did the join via (will be invalid if not directly via a friend)
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	//
 	// On PS3, the friend will be invalid if this was triggered by a PSN invite via the XMB, but
 	// the account type will be console user so you can tell at least that this was from a PSN friend
 	// rather than a Steam friend.
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 	CSteamID m_steamIDFriend;		
 };
 
@@ -715,6 +731,7 @@ struct FriendsEnumerateFollowingList_t
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 //-----------------------------------------------------------------------------
 // Purpose: reports the result of an attempt to change the user's persona name
@@ -728,6 +745,8 @@ struct SetPersonaNameResponse_t
 	EResult m_result; // detailed result code
 };
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 //-----------------------------------------------------------------------------
 // Purpose: Invoked when the status of unread messages changes
@@ -770,9 +789,13 @@ struct EquippedProfileItems_t
 	bool m_bHasProfileBackground;
 	bool m_bHasMiniProfileBackground;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	bool m_bFromCache;
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+	bool m_bFromCache;
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 };
 
 #pragma pack( pop )

@@ -61,6 +61,9 @@ STEAM_CALLBACK_BEGIN( GetOPFSettingsResult_t, k_iSteamVideoCallbacks + 24 )
 STEAM_CALLBACK_END(2)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 STEAM_CALLBACK_BEGIN( BroadcastUploadStart_t, k_iSteamVideoCallbacks + 4 )
 	STEAM_CALLBACK_MEMBER( 0, bool, m_bIsRTMP )
 STEAM_CALLBACK_END( 1 )
@@ -68,8 +71,11 @@ STEAM_CALLBACK_END( 1 )
 STEAM_CALLBACK_BEGIN( BroadcastUploadStop_t, k_iSteamVideoCallbacks + 5 )
 	STEAM_CALLBACK_MEMBER( 0, EBroadcastUploadResult, m_eResult )
 STEAM_CALLBACK_END( 1 )
+<<<<<<< HEAD
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 #pragma pack( pop )
 

@@ -23,12 +23,15 @@ typedef unsigned char uint8;
 
 #if !defined(VALVE_BIG_ENDIAN)
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 #if defined(_PS3)
 // Make sure VALVE_BIG_ENDIAN gets set on PS3, may already be set previously in Valve internal code.
 #define VALVE_BIG_ENDIAN 1
 #endif
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 #if defined( __GNUC__ ) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define VALVE_BIG_ENDIAN 1
 #endif

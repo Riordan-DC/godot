@@ -75,12 +75,17 @@ S_API uint64 SteamGameServer_GetSteamID();
 
 // Older SDKs exported this global pointer, but it is no longer supported.
 <<<<<<< HEAD
+<<<<<<< HEAD
 // You should use SteamGameServerClient() to safely access the ISteamClient
 // APIs from your game server application.
 =======
 // You should use SteamGameServerClient() or CSteamGameServerAPIContext to
 // safely access the ISteamClient APIs from your game server application.
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+// You should use SteamGameServerClient() to safely access the ISteamClient
+// APIs from your game server application.
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 //S_API ISteamClient *g_pSteamClientGameServer;
 
 // SteamGameServer_InitSafe has been replaced with SteamGameServer_Init and
@@ -93,6 +98,7 @@ S_API uint64 SteamGameServer_GetSteamID();
 //
 //=============================================================================
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 #ifndef STEAM_API_EXPORTS
@@ -119,6 +125,8 @@ inline bool CSteamGameServerAPIContext::Init()
 #endif
 
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 S_API ESteamAPIInitResult S_CALLTYPE SteamInternal_GameServer_Init_V2( uint32 unIP, uint16 usGamePort, uint16 usQueryPort, EServerMode eServerMode, const char *pchVersionString, const char *pszInternalCheckInterfaceVersions, SteamErrMsg *pOutErrMsg );
 inline ESteamAPIInitResult SteamGameServer_InitEx( uint32 unIP, uint16 usGamePort, uint16 usQueryPort, EServerMode eServerMode, const char *pchVersionString, SteamErrMsg *pOutErrMsg )
 {

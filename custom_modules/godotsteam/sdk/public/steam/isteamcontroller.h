@@ -459,13 +459,19 @@ enum EControllerActionOrigin
 	k_EControllerActionOrigin_PS5_RightFn,
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 	k_EControllerActionOrigin_Horipad_M1,
 	k_EControllerActionOrigin_Horipad_M2,
 	k_EControllerActionOrigin_Horipad_L4,
 	k_EControllerActionOrigin_Horipad_R4,
 
+<<<<<<< HEAD
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 	k_EControllerActionOrigin_Count, // If Steam has added support for new controllers origins will go here.
 	k_EControllerActionOrigin_MaximumPossibleValue = 32767, // Origins are currently a maximum of 16 bits.
 };

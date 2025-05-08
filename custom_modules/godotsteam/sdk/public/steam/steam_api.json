@@ -284,6 +284,7 @@
     },
     {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
       "callback_id": 347,
       "fields": [
@@ -295,6 +296,8 @@
     },
     {
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "callback_id": 348,
       "fields": [],
       "struct": "UnreadChatMessagesChanged_t"
@@ -323,11 +326,16 @@
         { "fieldname":"m_bHasProfileModifier", "fieldtype":"bool" },
         { "fieldname":"m_bHasProfileBackground", "fieldtype":"bool" },
 <<<<<<< HEAD
+<<<<<<< HEAD
         { "fieldname":"m_bHasMiniProfileBackground", "fieldtype":"bool" },
         { "fieldname":"m_bFromCache", "fieldtype":"bool" }
 =======
         { "fieldname":"m_bHasMiniProfileBackground", "fieldtype":"bool" }
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+        { "fieldname":"m_bHasMiniProfileBackground", "fieldtype":"bool" },
+        { "fieldname":"m_bFromCache", "fieldtype":"bool" }
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       ],
       "struct": "EquippedProfileItems_t"
     },
@@ -487,6 +495,7 @@
     },
     {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
       "callback_id": 515,
       "fields": [
@@ -497,6 +506,8 @@
     },
     {
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "callback_id": 516,
       "fields": [
         { "fieldname":"m_eResult", "fieldtype":"EResult" }
@@ -981,6 +992,7 @@
       "fields": [
         { "fieldname":"m_nGameID", "fieldtype":"uint64" },
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         { "fieldname":"m_eResult", "fieldtype":"EResult" },
         { "fieldname":"m_ulRequiredDiskSpace", "fieldtype":"uint64" }
@@ -992,6 +1004,8 @@
       "fields": [
         { "fieldname":"m_nGameID", "fieldtype":"uint64" },
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         { "fieldname":"m_eResult", "fieldtype":"EResult" }
       ],
       "struct": "GlobalStatsReceived_t"
@@ -1679,6 +1693,9 @@
     },
     {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "callback_id": 6001,
       "fields": [
         { "fieldname":"m_rgchPhaseID", "fieldtype":"char [64]" },
@@ -1698,8 +1715,11 @@
       "struct": "SteamTimelineEventRecordingExists_t"
     },
     {
+<<<<<<< HEAD
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "callback_id": 4611,
       "fields": [
         { "fieldname":"m_eResult", "fieldtype":"EResult" },
@@ -1718,6 +1738,9 @@
     },
     {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "callback_id": 4604,
       "fields": [
         { "fieldname":"m_bIsRTMP", "fieldtype":"bool" }
@@ -1732,8 +1755,11 @@
       "struct": "BroadcastUploadStop_t"
     },
     {
+<<<<<<< HEAD
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "callback_id": 5001,
       "fields": [],
       "struct": "SteamParentalSettingsChanged_t"
@@ -1987,12 +2013,18 @@
     { "constname":"k_SteamInventoryUpdateHandleInvalid", "consttype":"SteamInventoryUpdateHandle_t", "constval":"0xffffffffffffffffull" },
     { "constname":"k_unMaxTimelinePriority", "consttype":"uint32", "constval":"1000" },
 <<<<<<< HEAD
+<<<<<<< HEAD
     { "constname":"k_unTimelinePriority_KeepCurrentValue", "consttype":"uint32", "constval":"1000000" },
     { "constname":"k_flMaxTimelineEventDuration", "consttype":"float", "constval":"600.f" },
     { "constname":"k_cchMaxPhaseIDLength", "consttype":"uint32", "constval":"64" },
 =======
     { "constname":"k_flMaxTimelineEventDuration", "consttype":"float", "constval":"600.f" },
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+    { "constname":"k_unTimelinePriority_KeepCurrentValue", "consttype":"uint32", "constval":"1000000" },
+    { "constname":"k_flMaxTimelineEventDuration", "consttype":"float", "constval":"600.f" },
+    { "constname":"k_cchMaxPhaseIDLength", "consttype":"uint32", "constval":"64" },
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
     { "constname":"k_HSteamNetConnection_Invalid", "consttype":"HSteamNetConnection", "constval":"0" },
     { "constname":"k_HSteamListenSocket_Invalid", "consttype":"HSteamListenSocket", "constval":"0" },
     { "constname":"k_HSteamNetPollGroup_Invalid", "consttype":"HSteamNetPollGroup", "constval":"0" },
@@ -2185,11 +2217,16 @@
         { "name":"K_EResultPhoneNumberIsVOIP", "value":"127" },
         { "name":"k_EResultNotSupported", "value":"128" },
 <<<<<<< HEAD
+<<<<<<< HEAD
         { "name":"k_EResultFamilySizeLimitExceeded", "value":"129" },
         { "name":"k_EResultOfflineAppCacheInvalid", "value":"130" }
 =======
         { "name":"k_EResultFamilySizeLimitExceeded", "value":"129" }
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+        { "name":"k_EResultFamilySizeLimitExceeded", "value":"129" },
+        { "name":"k_EResultOfflineAppCacheInvalid", "value":"130" }
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       ]
     },
     {
@@ -2515,6 +2552,7 @@
     },
     {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
       "enumname": "EUserRestriction",
       "values": [
@@ -2530,6 +2568,8 @@
     },
     {
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "enumname": "EOverlayToStoreFlag",
       "values": [
         { "name":"k_EOverlayToStoreFlag_None", "value":"0" },
@@ -3409,14 +3449,20 @@
         { "name":"k_EInputActionOrigin_SteamDeck_Reserved19", "value":"404" },
         { "name":"k_EInputActionOrigin_SteamDeck_Reserved20", "value":"405" },
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         { "name":"k_EInputActionOrigin_Horipad_M1", "value":"406" },
         { "name":"k_EInputActionOrigin_Horipad_M2", "value":"407" },
         { "name":"k_EInputActionOrigin_Horipad_L4", "value":"408" },
         { "name":"k_EInputActionOrigin_Horipad_R4", "value":"409" },
         { "name":"k_EInputActionOrigin_Count", "value":"410" },
+<<<<<<< HEAD
 =======
         { "name":"k_EInputActionOrigin_Count", "value":"406" },
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         { "name":"k_EInputActionOrigin_MaximumPossibleValue", "value":"32767" }
       ]
     },
@@ -3932,14 +3978,20 @@
         { "name":"k_EControllerActionOrigin_PS5_LeftFn", "value":"384" },
         { "name":"k_EControllerActionOrigin_PS5_RightFn", "value":"385" },
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         { "name":"k_EControllerActionOrigin_Horipad_M1", "value":"386" },
         { "name":"k_EControllerActionOrigin_Horipad_M2", "value":"387" },
         { "name":"k_EControllerActionOrigin_Horipad_L4", "value":"388" },
         { "name":"k_EControllerActionOrigin_Horipad_R4", "value":"389" },
         { "name":"k_EControllerActionOrigin_Count", "value":"390" },
+<<<<<<< HEAD
 =======
         { "name":"k_EControllerActionOrigin_Count", "value":"386" },
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         { "name":"k_EControllerActionOrigin_MaximumPossibleValue", "value":"32767" }
       ]
     },
@@ -4147,6 +4199,9 @@
     },
     {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "enumname": "ERemotePlayInputType",
       "values": [
         { "name":"k_ERemotePlayInputUnknown", "value":"0" },
@@ -4284,8 +4339,11 @@
       ]
     },
     {
+<<<<<<< HEAD
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "enumname": "ESteamNetworkingAvailability",
       "values": [
         { "name":"k_ESteamNetworkingAvailability_CannotTry", "value":"-102" },
@@ -4308,9 +4366,12 @@
         { "name":"k_ESteamNetworkingIdentityType_XboxPairwiseID", "value":"17" },
         { "name":"k_ESteamNetworkingIdentityType_SonyPSN", "value":"18" },
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         { "name":"k_ESteamNetworkingIdentityType_GoogleStadia", "value":"19" },
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         { "name":"k_ESteamNetworkingIdentityType_IPAddress", "value":"1" },
         { "name":"k_ESteamNetworkingIdentityType_GenericString", "value":"2" },
         { "name":"k_ESteamNetworkingIdentityType_GenericBytes", "value":"3" },
@@ -4427,22 +4488,32 @@
         { "name":"k_ESteamNetworkingConfig_DualWifi_Enable", "value":"39" },
         { "name":"k_ESteamNetworkingConfig_EnableDiagnosticsUI", "value":"46" },
 <<<<<<< HEAD
+<<<<<<< HEAD
         { "name":"k_ESteamNetworkingConfig_SendTimeSincePreviousPacket", "value":"59" },
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+        { "name":"k_ESteamNetworkingConfig_SendTimeSincePreviousPacket", "value":"59" },
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         { "name":"k_ESteamNetworkingConfig_FakePacketLoss_Send", "value":"2" },
         { "name":"k_ESteamNetworkingConfig_FakePacketLoss_Recv", "value":"3" },
         { "name":"k_ESteamNetworkingConfig_FakePacketLag_Send", "value":"4" },
         { "name":"k_ESteamNetworkingConfig_FakePacketLag_Recv", "value":"5" },
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         { "name":"k_ESteamNetworkingConfig_FakePacketJitter_Send_Avg", "value":"53" },
         { "name":"k_ESteamNetworkingConfig_FakePacketJitter_Send_Max", "value":"54" },
         { "name":"k_ESteamNetworkingConfig_FakePacketJitter_Send_Pct", "value":"55" },
         { "name":"k_ESteamNetworkingConfig_FakePacketJitter_Recv_Avg", "value":"56" },
         { "name":"k_ESteamNetworkingConfig_FakePacketJitter_Recv_Max", "value":"57" },
         { "name":"k_ESteamNetworkingConfig_FakePacketJitter_Recv_Pct", "value":"58" },
+<<<<<<< HEAD
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         { "name":"k_ESteamNetworkingConfig_FakePacketReorder_Send", "value":"6" },
         { "name":"k_ESteamNetworkingConfig_FakePacketReorder_Recv", "value":"7" },
         { "name":"k_ESteamNetworkingConfig_FakePacketReorder_Time", "value":"8" },
@@ -5167,10 +5238,14 @@
           "kind": "user",
           "name": "SteamFriends",
 <<<<<<< HEAD
+<<<<<<< HEAD
           "name_flat": "SteamAPI_SteamFriends_v018"
 =======
           "name_flat": "SteamAPI_SteamFriends_v017"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "name_flat": "SteamAPI_SteamFriends_v018"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         }
       ],
       "classname": "ISteamFriends",
@@ -5184,6 +5259,7 @@
         },
         {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
           "callresult": "SetPersonaNameResponse_t",
           "methodname": "SetPersonaName",
@@ -5195,6 +5271,8 @@
         },
         {
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           "methodname": "GetPersonaState",
           "methodname_flat": "SteamAPI_ISteamFriends_GetPersonaState",
           "params": [],
@@ -5547,6 +5625,7 @@
         },
         {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
           "methodname": "GetUserRestrictions",
           "methodname_flat": "SteamAPI_ISteamFriends_GetUserRestrictions",
@@ -5555,6 +5634,8 @@
         },
         {
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           "methodname": "SetRichPresence",
           "methodname_flat": "SteamAPI_ISteamFriends_SetRichPresence",
           "params": [
@@ -5879,10 +5960,14 @@
         }
       ],
 <<<<<<< HEAD
+<<<<<<< HEAD
       "version_string": "SteamFriends018"
 =======
       "version_string": "SteamFriends017"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+      "version_string": "SteamFriends018"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
     },
     {
       "accessors": [
@@ -7705,16 +7790,21 @@
           "kind": "user",
           "name": "SteamUserStats",
 <<<<<<< HEAD
+<<<<<<< HEAD
           "name_flat": "SteamAPI_SteamUserStats_v013"
 =======
           "name_flat": "SteamAPI_SteamUserStats_v012"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "name_flat": "SteamAPI_SteamUserStats_v013"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         }
       ],
       "classname": "ISteamUserStats",
       "fields": [],
       "methods": [
         {
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
           "callback": "UserStatsReceived_t",
@@ -7725,6 +7815,8 @@
         },
         {
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           "methodname": "GetStat",
           "methodname_flat": "SteamAPI_ISteamUserStats_GetStatInt32",
           "params": [
@@ -8148,10 +8240,14 @@
         }
       ],
 <<<<<<< HEAD
+<<<<<<< HEAD
       "version_string": "STEAMUSERSTATS_INTERFACE_VERSION013"
 =======
       "version_string": "STEAMUSERSTATS_INTERFACE_VERSION012"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+      "version_string": "STEAMUSERSTATS_INTERFACE_VERSION013"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
     },
     {
       "accessors": [
@@ -8400,9 +8496,12 @@
           "methodname_flat": "SteamAPI_ISteamApps_GetNumBetas",
           "params": [
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
             { "paramname":"unAppID", "paramtype":"AppId_t" },
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
             { "paramname":"pnAvailable", "paramtype":"int *" },
             { "paramname":"pnPrivate", "paramtype":"int *" }
           ],
@@ -8413,9 +8512,12 @@
           "methodname_flat": "SteamAPI_ISteamApps_GetBetaInfo",
           "params": [
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
             { "paramname":"unAppID", "paramtype":"AppId_t" },
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
             { "paramname":"iBetaIndex", "paramtype":"int" },
             { "paramname":"punFlags", "paramtype":"uint32 *" },
             { "paramname":"punBuildID", "paramtype":"uint32 *" },
@@ -8431,9 +8533,12 @@
           "methodname_flat": "SteamAPI_ISteamApps_SetActiveBeta",
           "params": [
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
             { "paramname":"unAppID", "paramtype":"AppId_t" },
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
             { "paramname":"pchBetaName", "paramtype":"const char *" }
           ],
           "returntype": "bool"
@@ -10138,19 +10243,27 @@
           "kind": "user",
           "name": "SteamUGC",
 <<<<<<< HEAD
+<<<<<<< HEAD
           "name_flat": "SteamAPI_SteamUGC_v021"
 =======
           "name_flat": "SteamAPI_SteamUGC_v020"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "name_flat": "SteamAPI_SteamUGC_v021"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         },
         {
           "kind": "gameserver",
           "name": "SteamGameServerUGC",
 <<<<<<< HEAD
+<<<<<<< HEAD
           "name_flat": "SteamAPI_SteamGameServerUGC_v021"
 =======
           "name_flat": "SteamAPI_SteamGameServerUGC_v020"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "name_flat": "SteamAPI_SteamGameServerUGC_v021"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         }
       ],
       "classname": "ISteamUGC",
@@ -10339,10 +10452,14 @@
             { "paramname":"cchURLSize", "paramtype":"uint32" },
             {
 <<<<<<< HEAD
+<<<<<<< HEAD
               "out_string_count": "cchOriginalFileNameSize",
 =======
               "out_string_count": "cchURLSize",
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+              "out_string_count": "cchOriginalFileNameSize",
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
               "paramname": "pchOriginalFileName",
               "paramtype": "char *"
             },
@@ -10934,12 +11051,18 @@
           "methodname": "GetNumSubscribedItems",
           "methodname_flat": "SteamAPI_ISteamUGC_GetNumSubscribedItems",
 <<<<<<< HEAD
+<<<<<<< HEAD
           "params": [
             { "paramname":"bIncludeLocallyDisabled", "paramtype":"bool" }
           ],
 =======
           "params": [],
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "params": [
+            { "paramname":"bIncludeLocallyDisabled", "paramtype":"bool" }
+          ],
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           "returntype": "uint32"
         },
         {
@@ -10948,11 +11071,16 @@
           "params": [
             { "paramname":"pvecPublishedFileID", "paramtype":"PublishedFileId_t *" },
 <<<<<<< HEAD
+<<<<<<< HEAD
             { "paramname":"cMaxEntries", "paramtype":"uint32" },
             { "paramname":"bIncludeLocallyDisabled", "paramtype":"bool" }
 =======
             { "paramname":"cMaxEntries", "paramtype":"uint32" }
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+            { "paramname":"cMaxEntries", "paramtype":"uint32" },
+            { "paramname":"bIncludeLocallyDisabled", "paramtype":"bool" }
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           ],
           "returntype": "uint32"
         },
@@ -11123,6 +11251,9 @@
           ],
           "returntype": "uint32"
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         },
         {
           "methodname": "SetItemsDisabledLocally",
@@ -11142,6 +11273,7 @@
             { "paramname":"unNumPublishedFileIDs", "paramtype":"uint32" }
           ],
           "returntype": "bool"
+<<<<<<< HEAD
         }
       ],
       "version_string": "STEAMUGC_INTERFACE_VERSION021"
@@ -11150,6 +11282,11 @@
       ],
       "version_string": "STEAMUGC_INTERFACE_VERSION020"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+        }
+      ],
+      "version_string": "STEAMUGC_INTERFACE_VERSION021"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
     },
     {
       "accessors": [
@@ -11171,6 +11308,7 @@
           ]
         },
         {
+<<<<<<< HEAD
 <<<<<<< HEAD
           "enumname": "EHTMLMouseCursor",
           "fqname": "ISteamHTMLSurface::EHTMLMouseCursor",
@@ -11266,6 +11404,55 @@
             { "name":"dc_custom", "value":"40" },
             { "name":"dc_last", "value":"41" }
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "enumname": "EHTMLMouseCursor",
+          "fqname": "ISteamHTMLSurface::EHTMLMouseCursor",
+          "values": [
+            { "name":"k_EHTMLMouseCursor_User", "value":"0" },
+            { "name":"k_EHTMLMouseCursor_None", "value":"1" },
+            { "name":"k_EHTMLMouseCursor_Arrow", "value":"2" },
+            { "name":"k_EHTMLMouseCursor_IBeam", "value":"3" },
+            { "name":"k_EHTMLMouseCursor_Hourglass", "value":"4" },
+            { "name":"k_EHTMLMouseCursor_WaitArrow", "value":"5" },
+            { "name":"k_EHTMLMouseCursor_Crosshair", "value":"6" },
+            { "name":"k_EHTMLMouseCursor_Up", "value":"7" },
+            { "name":"k_EHTMLMouseCursor_SizeNW", "value":"8" },
+            { "name":"k_EHTMLMouseCursor_SizeSE", "value":"9" },
+            { "name":"k_EHTMLMouseCursor_SizeNE", "value":"10" },
+            { "name":"k_EHTMLMouseCursor_SizeSW", "value":"11" },
+            { "name":"k_EHTMLMouseCursor_SizeW", "value":"12" },
+            { "name":"k_EHTMLMouseCursor_SizeE", "value":"13" },
+            { "name":"k_EHTMLMouseCursor_SizeN", "value":"14" },
+            { "name":"k_EHTMLMouseCursor_SizeS", "value":"15" },
+            { "name":"k_EHTMLMouseCursor_SizeWE", "value":"16" },
+            { "name":"k_EHTMLMouseCursor_SizeNS", "value":"17" },
+            { "name":"k_EHTMLMouseCursor_SizeAll", "value":"18" },
+            { "name":"k_EHTMLMouseCursor_No", "value":"19" },
+            { "name":"k_EHTMLMouseCursor_Hand", "value":"20" },
+            { "name":"k_EHTMLMouseCursor_Blank", "value":"21" },
+            { "name":"k_EHTMLMouseCursor_MiddlePan", "value":"22" },
+            { "name":"k_EHTMLMouseCursor_NorthPan", "value":"23" },
+            { "name":"k_EHTMLMouseCursor_NorthEastPan", "value":"24" },
+            { "name":"k_EHTMLMouseCursor_EastPan", "value":"25" },
+            { "name":"k_EHTMLMouseCursor_SouthEastPan", "value":"26" },
+            { "name":"k_EHTMLMouseCursor_SouthPan", "value":"27" },
+            { "name":"k_EHTMLMouseCursor_SouthWestPan", "value":"28" },
+            { "name":"k_EHTMLMouseCursor_WestPan", "value":"29" },
+            { "name":"k_EHTMLMouseCursor_NorthWestPan", "value":"30" },
+            { "name":"k_EHTMLMouseCursor_Alias", "value":"31" },
+            { "name":"k_EHTMLMouseCursor_Cell", "value":"32" },
+            { "name":"k_EHTMLMouseCursor_ColResize", "value":"33" },
+            { "name":"k_EHTMLMouseCursor_CopyCur", "value":"34" },
+            { "name":"k_EHTMLMouseCursor_VerticalText", "value":"35" },
+            { "name":"k_EHTMLMouseCursor_RowResize", "value":"36" },
+            { "name":"k_EHTMLMouseCursor_ZoomIn", "value":"37" },
+            { "name":"k_EHTMLMouseCursor_ZoomOut", "value":"38" },
+            { "name":"k_EHTMLMouseCursor_Help", "value":"39" },
+            { "name":"k_EHTMLMouseCursor_Custom", "value":"40" },
+            { "name":"k_EHTMLMouseCursor_SizeNWSE", "value":"41" },
+            { "name":"k_EHTMLMouseCursor_SizeNESW", "value":"42" },
+            { "name":"k_EHTMLMouseCursor_last", "value":"43" }
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           ]
         },
         {
@@ -12123,10 +12310,14 @@
           "kind": "user",
           "name": "SteamTimeline",
 <<<<<<< HEAD
+<<<<<<< HEAD
           "name_flat": "SteamAPI_SteamTimeline_v004"
 =======
           "name_flat": "SteamAPI_SteamTimeline_v001"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "name_flat": "SteamAPI_SteamTimeline_v004"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         }
       ],
       "classname": "ISteamTimeline",
@@ -12134,12 +12325,17 @@
       "methods": [
         {
 <<<<<<< HEAD
+<<<<<<< HEAD
           "methodname": "SetTimelineTooltip",
           "methodname_flat": "SteamAPI_ISteamTimeline_SetTimelineTooltip",
 =======
           "methodname": "SetTimelineStateDescription",
           "methodname_flat": "SteamAPI_ISteamTimeline_SetTimelineStateDescription",
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "methodname": "SetTimelineTooltip",
+          "methodname_flat": "SteamAPI_ISteamTimeline_SetTimelineTooltip",
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           "params": [
             { "paramname":"pchDescription", "paramtype":"const char *" },
             { "paramname":"flTimeDelta", "paramtype":"float" }
@@ -12148,18 +12344,24 @@
         },
         {
 <<<<<<< HEAD
+<<<<<<< HEAD
           "methodname": "ClearTimelineTooltip",
           "methodname_flat": "SteamAPI_ISteamTimeline_ClearTimelineTooltip",
 =======
           "methodname": "ClearTimelineStateDescription",
           "methodname_flat": "SteamAPI_ISteamTimeline_ClearTimelineStateDescription",
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "methodname": "ClearTimelineTooltip",
+          "methodname_flat": "SteamAPI_ISteamTimeline_ClearTimelineTooltip",
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           "params": [
             { "paramname":"flTimeDelta", "paramtype":"float" }
           ],
           "returntype": "void"
         },
         {
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
           "methodname": "AddTimelineEvent",
@@ -12177,6 +12379,8 @@
         },
         {
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           "methodname": "SetTimelineGameMode",
           "methodname_flat": "SteamAPI_ISteamTimeline_SetTimelineGameMode",
           "params": [
@@ -12184,6 +12388,9 @@
           ],
           "returntype": "void"
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         },
         {
           "methodname": "AddInstantaneousTimelineEvent",
@@ -12329,6 +12536,7 @@
             { "paramname":"ulEvent", "paramtype":"const TimelineEventHandle_t" }
           ],
           "returntype": "void"
+<<<<<<< HEAD
         }
       ],
       "version_string": "STEAMTIMELINE_INTERFACE_V004"
@@ -12337,6 +12545,11 @@
       ],
       "version_string": "STEAMTIMELINE_INTERFACE_V001"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+        }
+      ],
+      "version_string": "STEAMTIMELINE_INTERFACE_V004"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
     },
     {
       "accessors": [
@@ -12451,10 +12664,14 @@
           "kind": "user",
           "name": "SteamRemotePlay",
 <<<<<<< HEAD
+<<<<<<< HEAD
           "name_flat": "SteamAPI_SteamRemotePlay_v003"
 =======
           "name_flat": "SteamAPI_SteamRemotePlay_v002"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "name_flat": "SteamAPI_SteamRemotePlay_v003"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         }
       ],
       "classname": "ISteamRemotePlay",
@@ -12511,6 +12728,7 @@
         },
         {
 <<<<<<< HEAD
+<<<<<<< HEAD
           "methodname": "ShowRemotePlayTogetherUI",
           "methodname_flat": "SteamAPI_ISteamRemotePlay_ShowRemotePlayTogetherUI",
           "params": [],
@@ -12521,6 +12739,11 @@
             { "paramname":"bShowOverlay", "paramtype":"bool" }
           ],
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+          "methodname": "ShowRemotePlayTogetherUI",
+          "methodname_flat": "SteamAPI_ISteamRemotePlay_ShowRemotePlayTogetherUI",
+          "params": [],
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           "returntype": "bool"
         },
         {
@@ -12531,6 +12754,9 @@
           ],
           "returntype": "bool"
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
         },
         {
           "methodname": "BEnableRemotePlayTogetherDirectInput",
@@ -12593,6 +12819,7 @@
             { "paramname":"unCursorID", "paramtype":"RemotePlayCursorID_t" }
           ],
           "returntype": "void"
+<<<<<<< HEAD
         }
       ],
       "version_string": "STEAMREMOTEPLAY_INTERFACE_VERSION003"
@@ -12601,6 +12828,11 @@
       ],
       "version_string": "STEAMREMOTEPLAY_INTERFACE_VERSION002"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+        }
+      ],
+      "version_string": "STEAMREMOTEPLAY_INTERFACE_VERSION003"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
     },
     {
       "accessors": [
@@ -14317,6 +14549,9 @@
     },
     {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "fields": [
         { "fieldname":"m_bAbsolute", "fieldtype":"bool" },
         { "fieldname":"m_flNormalizedX", "fieldtype":"float" },
@@ -14350,8 +14585,11 @@
       "struct": "RemotePlayInput_t"
     },
     {
+<<<<<<< HEAD
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
       "consts": [
         { "constname":"k_cchMaxString", "consttype":"int", "constval":"48" }
       ],
@@ -14541,6 +14779,7 @@
         },
         {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
           "methodname": "SetStadiaID",
           "methodname_flat": "SteamAPI_SteamNetworkingIdentity_SetStadiaID",
@@ -14557,6 +14796,8 @@
         },
         {
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
           "methodname": "SetIPAddr",
           "methodname_flat": "SteamAPI_SteamNetworkingIdentity_SetIPAddr",
           "params": [
@@ -14902,12 +15143,18 @@
     { "typedef":"SteamInventoryResult_t", "type":"int" },
     { "typedef":"SteamInventoryUpdateHandle_t", "type":"unsigned long long" },
 <<<<<<< HEAD
+<<<<<<< HEAD
     { "typedef":"TimelineEventHandle_t", "type":"unsigned long long" },
     { "typedef":"RemotePlaySessionID_t", "type":"unsigned int" },
     { "typedef":"RemotePlayCursorID_t", "type":"unsigned int" },
 =======
     { "typedef":"RemotePlaySessionID_t", "type":"unsigned int" },
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+    { "typedef":"TimelineEventHandle_t", "type":"unsigned long long" },
+    { "typedef":"RemotePlaySessionID_t", "type":"unsigned int" },
+    { "typedef":"RemotePlayCursorID_t", "type":"unsigned int" },
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
     { "typedef":"FnSteamNetConnectionStatusChanged", "type":"void (*)(SteamNetConnectionStatusChangedCallback_t *)" },
     { "typedef":"FnSteamNetAuthenticationStatusChanged", "type":"void (*)(SteamNetAuthenticationStatus_t *)" },
     { "typedef":"FnSteamRelayNetworkStatusChanged", "type":"void (*)(SteamRelayNetworkStatus_t *)" },

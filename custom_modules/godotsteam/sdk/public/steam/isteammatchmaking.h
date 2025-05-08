@@ -250,6 +250,7 @@ public:
 	// you must be the lobby owner of both lobbies
 	virtual bool SetLinkedLobby( CSteamID steamIDLobby, CSteamID steamIDLobbyDependent ) = 0;
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 #ifdef _PS3
@@ -259,6 +260,8 @@ public:
 	virtual void CheckForPSNGameBootInvite( unsigned int iGameBootAttributes  ) = 0;
 #endif
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 };
 #define STEAMMATCHMAKING_INTERFACE_VERSION "SteamMatchMaking009"
 
@@ -891,6 +894,7 @@ struct LobbyCreated_t
 // enum { k_iCallback = k_iSteamMatchmakingCallbacks + 14 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // used by now obsolete PSNGameBootInviteResult_t
 // enum { k_iCallback = k_iSteamMatchmakingCallbacks + 15 };
 =======
@@ -910,6 +914,10 @@ struct PSNGameBootInviteResult_t
 };
 
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+// used by now obsolete PSNGameBootInviteResult_t
+// enum { k_iCallback = k_iSteamMatchmakingCallbacks + 15 };
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 //-----------------------------------------------------------------------------
 // Purpose: Result of our request to create a Lobby

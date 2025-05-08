@@ -226,9 +226,12 @@ class ISteamMusic;
 class ISteamMusicRemote;
 class ISteamGameServerStats;
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 class ISteamPS3OverlayRender;
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 class ISteamHTTP;
 class ISteamController;
 class ISteamUGC;
@@ -311,6 +314,7 @@ enum { k_iSteamTimelineCallbacks = 6000 };
 #define STEAM_CALL_BACK(RESULT_TYPE) STEAM_CLANG_ATTR("callback:" #RESULT_TYPE ";")
 #define STEAM_FLAT_NAME(NAME) STEAM_CLANG_ATTR("flat_name:" #NAME ";")
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 class CSteamGameServerAPIContext
@@ -342,3 +346,5 @@ private:
 
 
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)

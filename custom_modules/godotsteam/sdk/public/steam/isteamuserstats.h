@@ -89,16 +89,22 @@ class ISteamUserStats
 {
 public:
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 	// Note: this call is no longer required as it is managed by the Steam client
 	// The game stats and achievements will be synchronized with Steam before
 	// the game process begins.
 	// virtual bool RequestCurrentStats() = 0;
+<<<<<<< HEAD
 =======
 	// Ask the server to send down this user's data and achievements for this game
 	STEAM_CALL_BACK( UserStatsReceived_t )
 	virtual bool RequestCurrentStats() = 0;
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 	// Data accessors
 	STEAM_FLAT_NAME( GetStatInt32 )
@@ -312,10 +318,14 @@ public:
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 #define STEAMUSERSTATS_INTERFACE_VERSION "STEAMUSERSTATS_INTERFACE_VERSION013"
 =======
 #define STEAMUSERSTATS_INTERFACE_VERSION "STEAMUSERSTATS_INTERFACE_VERSION012"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+#define STEAMUSERSTATS_INTERFACE_VERSION "STEAMUSERSTATS_INTERFACE_VERSION013"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 // Global interface accessor
 inline ISteamUserStats *SteamUserStats();
@@ -471,6 +481,7 @@ struct LeaderboardUGCSet_t
 
 //-----------------------------------------------------------------------------
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 // Purpose: callback indicating that PS3 trophies have been installed
 //-----------------------------------------------------------------------------
@@ -486,6 +497,8 @@ struct PS3TrophiesInstalled_t
 
 //-----------------------------------------------------------------------------
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 // Purpose: callback indicating global stats have been received.
 //	Returned as a result of RequestGlobalStats()
 //-----------------------------------------------------------------------------

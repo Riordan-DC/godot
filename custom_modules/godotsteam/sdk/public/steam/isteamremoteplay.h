@@ -23,14 +23,21 @@ enum ESteamDeviceFormFactor
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 // Steam Remote Play session ID
 typedef uint32 RemotePlaySessionID_t;
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 // Steam Remote Play mouse cursor ID
 typedef uint32 RemotePlayCursorID_t;
 
@@ -257,8 +264,11 @@ struct RemotePlayInput_t
 #pragma pack( pop )
 
 
+<<<<<<< HEAD
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 //-----------------------------------------------------------------------------
 // Purpose: Functions to provide information about Steam Remote Play sessions
 //-----------------------------------------------------------------------------
@@ -286,6 +296,7 @@ public:
 	virtual bool BGetSessionClientResolution( RemotePlaySessionID_t unSessionID, int *pnResolutionX, int *pnResolutionY ) = 0;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	// Show the Remote Play Together UI in the game overlay
 	// This returns false if your game is not configured for Remote Play Together
 	virtual bool ShowRemotePlayTogetherUI() = 0;
@@ -294,12 +305,20 @@ public:
 	// This returns false if Remote Play Together can't be started or your game is not configured for Remote Play Together
 	virtual bool BStartRemotePlayTogether( bool bShowOverlay = true ) = 0;
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+	// Show the Remote Play Together UI in the game overlay
+	// This returns false if your game is not configured for Remote Play Together
+	virtual bool ShowRemotePlayTogetherUI() = 0;
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 	// Invite a friend to Remote Play Together, or create a guest invite if steamIDFriend is empty
 	// This will automatically start Remote Play Together if it hasn't already been started
 	// This returns false if the invite can't be sent or your game is not configured for Remote Play Together
 	virtual bool BSendRemotePlayTogetherInvite( CSteamID steamIDFriend ) = 0;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 	// Make mouse and keyboard input for Remote Play Together sessions available via GetInput() instead of being merged with local input
 	virtual bool BEnableRemotePlayTogetherDirectInput() = 0;
@@ -343,6 +362,7 @@ public:
 	//
 	// The cursor ID is a value returned by CreateMouseCursor()
 	virtual void SetMouseCursor( RemotePlaySessionID_t unSessionID, RemotePlayCursorID_t unCursorID ) = 0;
+<<<<<<< HEAD
 };
 
 #define STEAMREMOTEPLAY_INTERFACE_VERSION "STEAMREMOTEPLAY_INTERFACE_VERSION003"
@@ -351,6 +371,11 @@ public:
 
 #define STEAMREMOTEPLAY_INTERFACE_VERSION "STEAMREMOTEPLAY_INTERFACE_VERSION002"
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+};
+
+#define STEAMREMOTEPLAY_INTERFACE_VERSION "STEAMREMOTEPLAY_INTERFACE_VERSION003"
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 // Global interface accessor
 inline ISteamRemotePlay *SteamRemotePlay();
@@ -364,10 +389,14 @@ STEAM_DEFINE_USER_INTERFACE_ACCESSOR( ISteamRemotePlay *, SteamRemotePlay, STEAM
 #else
 #error steam_api_common.h should define VALVE_CALLBACK_PACK_xxx
 <<<<<<< HEAD
+<<<<<<< HEAD
 #endif
 =======
 #endif 
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+#endif
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 
 STEAM_CALLBACK_BEGIN( SteamRemotePlaySessionConnected_t, k_iSteamRemotePlayCallbacks + 1 )

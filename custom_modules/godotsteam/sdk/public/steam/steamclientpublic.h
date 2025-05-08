@@ -144,9 +144,13 @@ enum EResult
 	k_EResultNotSupported = 128,				// The data being accessed is not supported by this API
 	k_EResultFamilySizeLimitExceeded = 129,		// Reached the maximum size of the family
 <<<<<<< HEAD
+<<<<<<< HEAD
 	k_EResultOfflineAppCacheInvalid = 130,		// The local data for the offline mode cache is insufficient to login
 =======
 >>>>>>> 502ae11a7c (steam sdk)
+=======
+	k_EResultOfflineAppCacheInvalid = 130,		// The local data for the offline mode cache is insufficient to login
+>>>>>>> a06b8b91ef (Updated to godot 4.5)
 };
 
 // Error codes for use with the voice functions
