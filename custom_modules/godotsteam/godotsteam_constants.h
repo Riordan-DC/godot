@@ -1,6 +1,33 @@
-#include "steam/steam_api.h"
+//===========================================================================//
+// GodotSteam - godotsteam_constants.h
+//===========================================================================//
+//
+// Copyright (c) 2015-Current | GP Garcia and Contributors (view contributors.md)
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+//===========================================================================//
 
-// Define Steam API constants
+#ifndef GODOTSTEAM_CONSTANTS_H
+#define GODOTSTEAM_CONSTANTS_H
+
+
 // Constants with 'deprecated/': these were listed in the SDK docs but do not exist in the header files; safe to remove probably
 // Possibly deprecated or never existed?
 #define ACCOUNT_ID_INVALID k_uAccountIdInvalid
@@ -133,8 +160,10 @@
 #define UFS_TAG_VALUE_MAX k_cubUFSTagValueMax
 
 // Define Timeline constants
+#define MAX_PHASE_ID_LENGTH k_cchMaxPhaseIDLength
 #define MAX_TIMELINE_PRIORITY k_unMaxTimelinePriority
 #define MAX_TIMELINE_EVENT_DURATION k_flMaxTimelineEventDuration
+#define TIMELINE_PRIORITY_KEEP_CURRENT_VALUE k_unTimelinePriority_KeepCurrentValue
 
 // Define UGC constants
 #define DEVELOPER_METADATA_MAX k_cchDeveloperMetadataMax
@@ -146,3 +175,6 @@
 #define LEADERBOARD_DETAIL_MAX k_cLeaderboardDetailsMax
 #define LEADERBOARD_NAME_MAX k_cchLeaderboardNameMax
 #define STAT_NAME_MAX k_cchStatNameMax
+
+
+#endif // GODOTSTEAM_CONSTANTS_H

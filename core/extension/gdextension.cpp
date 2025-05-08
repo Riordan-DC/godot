@@ -814,147 +814,15 @@ void GDExtension::finalize_gdextensions() {
 Error GDExtensionResourceLoader::load_gdextension_resource(const String &p_path, Ref<GDExtension> &p_extension) {
 	ERR_FAIL_COND_V_MSG(p_extension.is_valid() && p_extension->is_library_open(), ERR_ALREADY_IN_USE, "Cannot load GDExtension resource into already opened library.");
 
-	Ref<ConfigFile> config;
-	config.instantiate();
+	GDExtensionManager *extension_manager = GDExtensionManager::get_singleton();
 
-	Error err = config->load(p_path);
-
-	if (err != OK) {
-		ERR_PRINT("Error loading GDExtension configuration file: " + p_path);
-		return err;
+	GDExtensionManager::LoadStatus status = extension_manager->load_extension(p_path);
+	if (status != GDExtensionManager::LOAD_STATUS_OK && status != GDExtensionManager::LOAD_STATUS_ALREADY_LOADED) {
+		// Errors already logged in load_extension().
+		return FAILED;
 	}
 
-	if (!config->has_section_key("configuration", "entry_symbol")) {
-		ERR_PRINT("GDExtension configuration file must contain a \"configuration/entry_symbol\" key: " + p_path);
-		return ERR_INVALID_DATA;
-	}
-
-	String entry_symbol = config->get_value("configuration", "entry_symbol");
-
-	uint32_t compatibility_minimum[3] = { 0, 0, 0 };
-	if (config->has_section_key("configuration", "compatibility_minimum")) {
-		String compat_string = config->get_value("configuration", "compatibility_minimum");
-		Vector<int> parts = compat_string.split_ints(".");
-		for (int i = 0; i < parts.size(); i++) {
-			if (i >= 3) {
-				break;
-			}
-			if (parts[i] >= 0) {
-				compatibility_minimum[i] = parts[i];
-			}
-		}
-	} else {
-		ERR_PRINT("GDExtension configuration file must contain a \"configuration/compatibility_minimum\" key: " + p_path);
-		return ERR_INVALID_DATA;
-	}
-
-	if (compatibility_minimum[0] < 4 || (compatibility_minimum[0] == 4 && compatibility_minimum[1] == 0)) {
-		ERR_PRINT(vformat("GDExtension's compatibility_minimum (%d.%d.%d) must be at least 4.1.0: %s", compatibility_minimum[0], compatibility_minimum[1], compatibility_minimum[2], p_path));
-		return ERR_INVALID_DATA;
-	}
-
-	bool compatible = true;
-	// Check version lexicographically.
-	if (VERSION_MAJOR != compatibility_minimum[0]) {
-		compatible = VERSION_MAJOR > compatibility_minimum[0];
-	} else if (VERSION_MINOR != compatibility_minimum[1]) {
-		compatible = VERSION_MINOR > compatibility_minimum[1];
-	} else {
-		compatible = VERSION_PATCH >= compatibility_minimum[2];
-	}
-	if (!compatible) {
-		ERR_PRINT(vformat("GDExtension only compatible with Godot version %d.%d.%d or later: %s", compatibility_minimum[0], compatibility_minimum[1], compatibility_minimum[2], p_path));
-		return ERR_INVALID_DATA;
-	}
-
-	// Optionally check maximum compatibility.
-	if (config->has_section_key("configuration", "compatibility_maximum")) {
-		uint32_t compatibility_maximum[3] = { 0, 0, 0 };
-		String compat_string = config->get_value("configuration", "compatibility_maximum");
-		Vector<int> parts = compat_string.split_ints(".");
-		for (int i = 0; i < 3; i++) {
-			if (i < parts.size() && parts[i] >= 0) {
-				compatibility_maximum[i] = parts[i];
-			} else {
-				// If a version part is missing, set the maximum to an arbitrary high value.
-				compatibility_maximum[i] = 9999;
-			}
-		}
-
-		compatible = true;
-		if (VERSION_MAJOR != compatibility_maximum[0]) {
-			compatible = VERSION_MAJOR < compatibility_maximum[0];
-		} else if (VERSION_MINOR != compatibility_maximum[1]) {
-			compatible = VERSION_MINOR < compatibility_maximum[1];
-		}
-#if VERSION_PATCH
-		// #if check to avoid -Wtype-limits warning when 0.
-		else {
-			compatible = VERSION_PATCH <= compatibility_maximum[2];
-		}
-#endif
-
-		if (!compatible) {
-			ERR_PRINT(vformat("GDExtension only compatible with Godot version %s or earlier: %s", compat_string, p_path));
-			return ERR_INVALID_DATA;
-		}
-	}
-
-	String library_path = GDExtension::find_extension_library(p_path, config, [](const String &p_feature) { return OS::get_singleton()->has_feature(p_feature); });
-
-	if (library_path.is_empty()) {
-		const String os_arch = OS::get_singleton()->get_name().to_lower() + "." + Engine::get_singleton()->get_architecture_name();
-		ERR_PRINT(vformat("No GDExtension library found for current OS and architecture (%s) in configuration file: %s", os_arch, p_path));
-		return ERR_FILE_NOT_FOUND;
-	}
-
-	if (library_path.get_file().begins_with("godot-jolt_") && compatibility_minimum[0] == 4 && compatibility_minimum[1] == 1) {
-		ERR_PRINT("Godot Jolt failed to load, as the currently installed version is incompatible with Godot 4.2. You can update it to a compatible version by deleting it and installing it again.");
-		return ERR_INVALID_DATA;
-	}
-
-	bool is_static_library = library_path.ends_with(".a") || library_path.ends_with(".xcframework");
-
-	if (!library_path.is_resource_file() && !library_path.is_absolute_path()) {
-		library_path = p_path.get_base_dir().path_join(library_path);
-	}
-
-	if (p_extension.is_null()) {
-		p_extension.instantiate();
-	}
-
-#ifdef TOOLS_ENABLED
-	p_extension->set_reloadable(config->get_value("configuration", "reloadable", false) && Engine::get_singleton()->is_extension_reloading_enabled());
-
-	p_extension->update_last_modified_time(
-			FileAccess::get_modified_time(p_path),
-			FileAccess::get_modified_time(library_path));
-#endif
-
-	Vector<SharedObject> library_dependencies = GDExtension::find_extension_dependencies(p_path, config, [](const String &p_feature) { return OS::get_singleton()->has_feature(p_feature); });
-	err = p_extension->open_library(is_static_library ? String() : library_path, entry_symbol, &library_dependencies);
-	if (err != OK) {
-		// Unreference the extension so that this loading can be considered a failure.
-		p_extension.unref();
-
-		// Errors already logged in open_library()
-		return err;
-	}
-
-	// Handle icons if any are specified.
-	if (config->has_section("icons")) {
-		List<String> keys;
-		config->get_section_keys("icons", &keys);
-		for (const String &key : keys) {
-			String icon_path = config->get_value("icons", key);
-			if (icon_path.is_relative_path()) {
-				icon_path = p_path.get_base_dir().path_join(icon_path);
-			}
-
-			p_extension->class_icon_paths[key] = icon_path;
-		}
-	}
-
+	p_extension = extension_manager->get_extension(p_path);
 	return OK;
 }
 

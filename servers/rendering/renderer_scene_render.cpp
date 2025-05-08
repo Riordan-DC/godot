@@ -40,12 +40,11 @@ void RendererSceneRender::CameraData::set_camera(const Transform3D p_transform, 
 	vaspect = p_vaspect;
 
 	main_transform = p_transform;
-	main_projection = p_main_projection;
-	shadow_projection = p_shadow_projection;
+	main_projection = p_projection;
 
 	visible_layers = p_visible_layers;
 	view_offset[0] = Transform3D();
-	view_projection[0] = p_main_projection;
+	view_projection[0] = p_projection;
 	taa_jitter = p_taa_jitter;
 	taa_frame_count = p_taa_frame_count;
 }
