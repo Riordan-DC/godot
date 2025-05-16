@@ -104,6 +104,10 @@ public:
 			size = 1.0;
 			offset = Vector2();
 			vaspect = false;
+			use_oblique_frustum = false;
+			oblique_normal = Vector3(0, 1, 0);
+			oblique_position = Vector3();
+			oblique_offset = 0.0f;
 		}
 	};
 
