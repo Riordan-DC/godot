@@ -213,6 +213,7 @@ private:
 	void _update_simulator_path();
 
 public:
+	RID get_joint_rid() { return joint; }
 	void _on_bone_parent_changed();
 
 	PhysicalBoneSimulator3D *get_simulator() const;
