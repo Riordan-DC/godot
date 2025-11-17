@@ -45,6 +45,7 @@
 #include "steam/isteamdualsense.h"
 
 // Include Godot headers
+#include "core/os/os.h"
 #include "core/config/project_settings.h"
 #include "core/object/object.h"
 #include "core/variant/dictionary.h"
