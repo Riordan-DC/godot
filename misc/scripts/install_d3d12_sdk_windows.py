@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../"))
 
