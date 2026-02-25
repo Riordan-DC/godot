@@ -1,0 +1,815 @@
+#ifndef ANIME_CLASS_H
+#define ANIME_CLASS_H
+
+// We don't need windows.h in this plugin but many others do and it throws up on itself all the time
+// So best to include it and make sure CI warns us when we use something Microsoft took for their own goals....
+#ifdef WIN32
+#include <windows.h>
+#endif
+
+#include "anime.h"
+
+#define ADD_GETTER(class, name) ClassDB::bind_method(D_METHOD(#name), &##class::##name);
+#define ADD_SETTER(class, name, arg, defval) ClassDB::bind_method(D_METHOD(#name, #arg), &##class::##name, DEFVAL(##defval));
+
+#include <godot_cpp/godot.hpp>
+#include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/classes/ref.hpp>
+#include <godot_cpp/classes/skeleton3d.hpp>
+#include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/classes/animation_player.hpp>
+#include <godot_cpp/classes/animation.hpp>
+#include <godot_cpp/classes/geometry3d.hpp>
+
+#include <vector>
+#include <cmath>
+
+using namespace std;
+using namespace godot;
+
+class TrackCache : public RefCounted {
+    GDCLASS(TrackCache, RefCounted);
+public:
+    int type = -1;
+    Node* node = nullptr;
+    NodePath property;
+
+    // Transform3D
+    Skeleton3D* skeleton = nullptr;
+    Vector3 pos;
+    Vector3 scale;
+    Quaternion rot;
+    int64_t bone_idx = -1;
+
+    // Value
+    Variant value;
+
+    // Bezier
+    float bezier;
+
+    TrackCache() { }
+
+    void _init() { }
+
+    TrackCache* copy() {
+        TrackCache* copy = memnew(TrackCache);//::_new();
+        copy->type = type;
+        copy->node = node;
+        copy->property = property;
+        copy->skeleton = skeleton;
+        copy->pos = pos;
+        copy->scale = scale;
+        copy->rot = rot;
+        copy->bone_idx = bone_idx;
+        copy->value = value;
+        copy->bezier = bezier;
+        return copy;
+    }
+
+    static void _register_methods() {
+        ClassDB::bind_method(D_METHOD("copy"), &TrackCache::copy);
+        
+        /*
+        ClassDB::bind_method(D_METHOD("set_mode", "mode"), &CopySkeletonModifier3D::set_mode, DEFVAL(nullptr));
+        ClassDB::bind_method(D_METHOD("get_mode"), &CopySkeletonModifier3D::get_mode);
+        
+        ADD_PROPERTY(PropertyInfo(Variant::INT, "type"), "set_type", "get_type");
+        ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "node"), "set_node", "get_node");
+        ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "property"), "set_property", "get_property");
+        ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "skeleton"), "set_skeleton", "get_skeleton");
+        ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "pos"), "set_pos", "get_pos");
+        ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "scale"), "set_scale", "get_scale");
+        ADD_PROPERTY(PropertyInfo(Variant::QUATERNION, "rot"), "set_rot", "get_rot");
+        ADD_PROPERTY(PropertyInfo(Variant::INT, "bone_idx"), "set_bone_idx", "get_bone_idx");
+        ADD_PROPERTY(PropertyInfo(Variant::NIL, "value"), "set_value", "get_value"); // Idk what the type should be
+        ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "bezier"), "set_bezier", "get_bezier");
+        */
+    }
+};
+
+
+class AnimationState : public RefCounted {
+    GDCLASS(AnimationState, RefCounted);
+public:
+    Node* node_root = nullptr;
+	Ref<Animation> animation;
+	float time = 0.0;
+	bool never_loop = false;
+	vector<TrackCache*> track_cache;
+
+    AnimationState() {
+        //this->track_cache = Array();
+     }
+
+    void _init() { }
+
+    void init(Animation* p_animation) {
+        if (p_animation != nullptr) {
+            animation = Ref<Animation>(p_animation);
+            int64_t track_count = animation->get_track_count();
+            track_cache.resize(track_count);
+            for (int i = 0; i < track_count; i++) {
+                int track_type = animation->track_get_type(i);
+                TrackCache* track = memnew(TrackCache);//::_new();
+                track->type = track_type;
+                track_cache[i] = track;
+            }
+        }
+     }
+
+    AnimationState* copy() {
+        AnimationState* copy = memnew(AnimationState);//::_new();
+        /*
+        if (this->animation != nullptr) {
+            copy->init(*this->animation);
+        }
+        */
+        copy->animation = this->animation;
+        copy->node_root = this->node_root;
+        copy->track_cache = this->track_cache;
+
+        /*
+        // deep copy
+        int64_t track_size = this->track_cache.size();
+        copy->track_cache.resize(track_size);
+        for (int64_t i = 0; i < track_size; i++) {
+            copy->track_cache[i] = this->track_cache[i]->copy();
+        }
+        */
+
+        copy->time = this->time;
+        return copy;
+     }
+
+    static void _register_methods() {
+        ClassDB::bind_method(D_METHOD("init"), &AnimationState::init);
+        ClassDB::bind_method(D_METHOD("copy"), &AnimationState::copy);
+
+        // setgets
+        ADD_SETTER(AnimationState, set_animation, animation, nullptr)
+        ADD_GETTER(AnimationState, get_animation)
+        ADD_SETTER(AnimationState, set_time, time, nullptr)
+        ADD_GETTER(AnimationState, get_time)
+        ADD_SETTER(AnimationState, set_never_loop, loop, nullptr)
+        ADD_GETTER(AnimationState, get_never_loop)
+
+        ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "animation"), "set_animation", "get_animation");
+        ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "time"), "set_time", "get_time");
+        ADD_PROPERTY(PropertyInfo(Variant::BOOL, "never_loop"), "set_never_loop", "get_never_loop");
+        //register_property<AnimationState, Array>("track_cache", &AnimationState::track_cache, Array());
+    }
+};
+
+
+class Anime : public RefCounted {
+    GDCLASS(Anime, RefCounted);
+public:
+    //bool debug_advance_time = false;
+    //bool playing = false;
+    AnimationPlayer* animation_player;
+    String root_bone;
+    Transform3D root_transform;
+    
+    Anime() {
+        this->animation_player = nullptr;
+        this->root_bone = String();
+        this->root_transform = Transform3D();
+     }
+
+    void _init() { }
+
+    void apply_animation_state(AnimationState* state, float delta) {
+        // Only called once right at the end
+        // TODO: Make sure the methods are only being called once!
+        if (state == nullptr) {
+            UtilityFunctions::print("State is null. Cannot apply animation state."); //state, delta);
+            return;
+        }
+        
+        Ref<Animation> animation = state->animation;
+
+        if (animation == nullptr) {
+            UtilityFunctions::print("No animation in state");
+            return;
+        }
+
+        Node* root_node = state->node_root;
+
+        if (root_node == nullptr) {
+            NodePath root_node_path = animation_player->get_root();
+            root_node = animation_player->get_node_or_null(root_node_path);
+            if (root_node == nullptr) {
+                UtilityFunctions::print("AnimationPlayer node_root is null!");
+                return;
+            } else {
+                state->node_root = root_node;
+            }
+        }
+        
+        int64_t track_count = animation->get_track_count();
+        for (int64_t track_idx = 0; track_idx < track_count; track_idx++) {
+            Animation::TrackType track_type = animation->track_get_type(track_idx);
+            NodePath track_path = animation->track_get_path(track_idx);
+            
+            switch(track_type) {
+                case Animation::TrackType::TYPE_ROTATION_3D:
+                {
+                    Skeleton3D* skeleton = state->track_cache[track_idx]->skeleton;
+                    if (skeleton == nullptr) {
+                        continue;
+                    }
+                    skeleton->set_bone_pose_rotation(state->track_cache[track_idx]->bone_idx, state->track_cache[track_idx]->rot);
+                    // if (skeleton->get_bone_name(bone_idx) == root_bone) {
+                    //     // Keep root rotation in skeleton
+                    //     skeleton->set_bone_pose(bone_idx, Transform3D(Basis(rot), Vector3()));
+                    //     root_transform = Transform3D(Basis(rot).scaled(scale), pos);
+                    // } else {
+                    // }
+                    break;
+                }
+                case Animation::TrackType::TYPE_POSITION_3D:
+                {
+                    Skeleton3D* skeleton = state->track_cache[track_idx]->skeleton;
+                    if (skeleton == nullptr) {
+                        continue;
+                    }
+                    skeleton->set_bone_pose_position(state->track_cache[track_idx]->bone_idx, state->track_cache[track_idx]->pos);
+                    // if (skeleton->get_bone_name(bone_idx) == root_bone) {
+                    //     // Keep root rotation in skeleton
+                    //     skeleton->set_bone_pose(bone_idx, Transform3D(Basis(rot), Vector3()));
+                    //     root_transform = Transform3D(Basis(rot).scaled(scale), pos);
+                    // } else {
+                    // }
+                    break;
+                }
+                case Animation::TrackType::TYPE_BEZIER:
+                {
+                    /*
+                    Node* node = state->track_cache[track_idx]->node;
+                    if (node == nullptr) {
+                        continue;
+                    }
+                    
+                    NodePath property = state->track_cache[track_idx]->property;
+                    float bezier = state->track_cache[track_idx]->bezier;
+                    node->set_indexed(property, bezier);
+                    */
+                    break;
+                }
+                case Animation::TrackType::TYPE_VALUE:
+                {
+                    // TODO: Test, is completely untested
+                    /*
+                    Node* node = state->track_cache[track_idx]->node;
+                    Variant value = state->track_cache[track_idx]->value;
+                    NodePath property = state->track_cache[track_idx]->property;
+                    node->set_indexed(property, value);
+                    */
+                    break;
+                }
+                case Animation::TrackType::TYPE_METHOD:
+                {
+                    /*
+                    Node* node = root_node->get_node_or_null(track_path);
+                    if (node == nullptr) {
+                        continue;
+                    }
+                    PoolIntArray indices = animation->method_track_get_key_indices(track_idx, state->time, delta);
+                    int indices_size = indices.size();
+                    for (int method_idx = 0; method_idx < indices_size; method_idx++) {
+                        String method_name = animation->method_track_get_name(track_idx, method_idx);
+                        Array method_params = animation->method_track_get_params(track_idx, method_idx);
+                        
+                        // If call deferred use call_deferred
+    //					node.call(method_name, method_params)
+                        // TODO: Test, completely untested
+                        //Godot::print(node, method_name, method_params);
+                    }
+                    */
+                    break;
+                }
+            }
+        }
+    }
+    
+    void play_animation(AnimationState* state, float delta, bool update_cache = true) {
+        Ref<Animation> animation = state->animation;
+        
+        state->time += delta;
+        
+        if (state->time > state->animation->get_length()) {
+            if (animation->get_loop_mode() != Animation::LOOP_NONE && state->never_loop == false) {
+                state->time = 0.0;
+            } else {
+                state->time = state->animation->get_length();
+            }
+        } else if (state->time < 0.0) { // Loop backwards
+            if (animation->get_loop_mode() != Animation::LOOP_NONE && state->never_loop == false) {
+                state->time = state->animation->get_length();
+            } else {
+                state->time = 0.0;
+            }
+        }
+        
+        if (update_cache == false) {
+            return;
+        }
+
+        Node* root_node = state->node_root;
+
+        if (root_node == nullptr) {
+            NodePath root_node_path = animation_player->get_root();
+            root_node = animation_player->get_node_or_null(root_node_path);
+            if (root_node == nullptr) {
+                UtilityFunctions::print("AnimationPlayer node_root is null!");
+                return;
+            } else {
+                state->node_root = root_node;
+            }
+        }
+        
+        int64_t track_count = animation->get_track_count();
+        for (int64_t track_idx = 0; track_idx < track_count; track_idx++) {
+            if (!animation->track_is_enabled(track_idx)) {
+                continue;
+            }
+
+            godot::Animation::TrackType track_type = animation->track_get_type(track_idx);
+
+            switch(track_type) {
+                case godot::Animation::TrackType::TYPE_ROTATION_3D:
+                {
+                    TrackCache* track = state->track_cache[track_idx];
+
+                    if (track->skeleton == nullptr) {
+                        Skeleton3D* skeleton = track->skeleton;
+                        if (skeleton == nullptr) {
+                            // issue here
+                            NodePath track_path = animation->track_get_path(track_idx);
+                            skeleton = Object::cast_to<Skeleton3D>(root_node->get_node_or_null(track_path));
+                        }
+
+                        if (skeleton == nullptr) {
+                            // TODO: Only skeletons are animated atm
+                            continue;
+                        }
+
+                        if (!skeleton->is_inside_tree()) {
+                            continue;
+                        }
+
+                        track->skeleton = skeleton; // Cache result
+
+                        int64_t bone_idx = track->bone_idx;
+                        if (bone_idx < 0) { // should be -1
+                            NodePath track_path = animation->track_get_path(track_idx);
+                            String bone = track_path.get_concatenated_subnames();
+                            bone_idx = skeleton->find_bone(bone);
+                            track->bone_idx = bone_idx;
+                        }
+                    }
+
+                    Quaternion rot = animation->rotation_track_interpolate(track_idx, state->time);
+                    track->rot = rot;
+                }
+                case godot::Animation::TrackType::TYPE_POSITION_3D:
+                {
+                    TrackCache* track = state->track_cache[track_idx];
+
+                    if (track->skeleton == nullptr) {
+                        Skeleton3D* skeleton = track->skeleton;
+                        if (skeleton == nullptr) {
+                            // issue here
+                            NodePath track_path = animation->track_get_path(track_idx);
+                            skeleton = Object::cast_to<Skeleton3D>(root_node->get_node_or_null(track_path));
+                        }
+
+                        if (skeleton == nullptr) {
+                            // TODO: Only skeletons are animated atm
+                            continue;
+                        }
+
+                        if (!skeleton->is_inside_tree()) {
+                            continue;
+                        }
+
+                        track->skeleton = skeleton; // Cache result
+
+                        int64_t bone_idx = track->bone_idx;
+                        if (bone_idx < 0) { // should be -1
+                            NodePath track_path = animation->track_get_path(track_idx);
+                            String bone = track_path.get_concatenated_subnames();
+                            bone_idx = skeleton->find_bone(bone);
+                            track->bone_idx = bone_idx;
+                        }
+                    }
+                    
+                    Vector3 pos = animation->position_track_interpolate(track_idx, state->time);
+                    track->pos = pos;
+                }
+                case godot::Animation::TrackType::TYPE_BEZIER:
+                {
+                    /*
+                    Array data = root->get_node_and_resource(track_path);
+                    Node* node = data[0];
+                    //var res = data[1];
+                    NodePath property = NodePath(data[2]);
+                    Godot::print(String(track_path));
+                    
+                    float bezier = animation->bezier_track_interpolate(track_idx, state->time);
+                    state->track_cache[track_idx]->node = node;
+                    state->track_cache[track_idx]->property = property;
+                    state->track_cache[track_idx]->bezier = bezier;
+                    */
+                }
+                case godot::Animation::TrackType::TYPE_VALUE:
+                {
+                    // TODO: Test, is completely untested
+                    /*
+                    Node* node = root->get_node(track_path);
+                    Variant value = animation->value_track_interpolate(track_idx, state->time);
+                    //String property = track_path.get_concatenated_subnames();
+                    state->track_cache[track_idx]->node = node;
+                    state->track_cache[track_idx]->property = track_path;
+                    state->track_cache[track_idx]->value = value;
+                    */
+                }
+            }
+        }
+    }
+
+    enum BlendMode {
+        BLEND,
+        ADD,
+        SUB
+    };
+
+    void blend_animation(AnimationState* state, AnimationState* blend_state, float blend_amount) {
+        _blend_animation(state, blend_state, blend_amount, BlendMode::BLEND, Dictionary());
+    }
+
+    void blend_animation_filter(AnimationState* state, AnimationState* blend_state, float blend_amount, Dictionary filter) {
+        _blend_animation(state, blend_state, blend_amount, BlendMode::BLEND, filter);
+    }
+
+    void add_animation(AnimationState* state, AnimationState* blend_state, float blend_amount) {
+        _blend_animation(state, blend_state, blend_amount, BlendMode::ADD, Dictionary());
+    }
+
+    void add_animation_filter(AnimationState* state, AnimationState* blend_state, float blend_amount, Dictionary filter) {
+        _blend_animation(state, blend_state, blend_amount, BlendMode::ADD, filter);
+    }
+
+    void sub_animation(AnimationState* state, AnimationState* blend_state, float blend_amount) {
+        _blend_animation(state, blend_state, blend_amount, BlendMode::SUB, Dictionary());
+    }
+
+    void sub_animation_filter(AnimationState* state, AnimationState* blend_state, float blend_amount, Dictionary filter) {
+        _blend_animation(state, blend_state, blend_amount, BlendMode::SUB, filter);
+    }
+
+    void _blend_animation(AnimationState* state, AnimationState* blend_state, float blend_amount, enum BlendMode blend_mode, Dictionary filter) {
+        // TODO: Only blends transform at the moment
+        // TODO: If a track exists in one but not another how are they combined?
+        // Solution: Only blend tracks that exist in state, extra tracks in blend_state, wont be blended.
+        if (Math::is_equal_approx(blend_amount, 0.0f)) {
+            return;
+        }
+        
+        Ref<Animation> animation = state->animation; 
+        Ref<Animation> blend_animation = blend_state->animation; 
+        int64_t track_count = animation->get_track_count();
+        for (int track_idx = 0; track_idx < track_count; track_idx++) {
+            Animation::TrackType track_type = animation->track_get_type(track_idx);
+            Animation::TrackType blend_track_type = blend_animation->track_get_type(track_idx);
+            //NodePath track_path = animation->track_get_path(track_idx);
+
+            if (track_type != blend_track_type) {
+                continue;
+            }
+            
+            switch(track_type) {
+                case Animation::TrackType::TYPE_ROTATION_3D:
+                {
+                    /*
+                    if (state->track_cache[track_idx]->bone_idx != blend_state->track_cache[track_idx]->bone_idx) {
+                        Godot::print("The track idx are not aligned for these two animations. A blending cannot occur without updating the code.");
+                        continue;
+                    }
+                    */
+
+                   TrackCache* track = state->track_cache[track_idx];
+                   TrackCache* blend_track = blend_state->track_cache[track_idx];
+                    
+                    float blend = Math::clamp(abs(blend_amount), 0.0f, 1.0f);
+
+                    if (track->skeleton != nullptr) {
+                        if (!filter.is_empty()) {
+                            String bone_name = track->skeleton->get_bone_name(track->bone_idx);
+                            if (filter.has(bone_name)) {
+                                Variant weight = filter[bone_name];
+                                if (weight.get_type() == Variant::FLOAT) {
+                                    blend = Math::clamp(abs((float)weight), 0.0f, 1.0f);
+                                    if (Math::is_zero_approx(blend)) {
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    Vector3 pos = track->pos;
+                    Vector3 scale = track->scale;
+                    Quaternion rot = track->rot;
+                    
+                    if (blend_mode == BlendMode::SUB) {
+                        blend = -blend;
+                        blend_mode = BlendMode::ADD;
+                    }
+
+                    switch (blend_mode) {
+                        case BlendMode::ADD: 
+                            {
+                                // Direct addition / subtraction.
+                                pos += blend_track->pos * blend;
+                                Quaternion q = Quaternion();
+                                q = q.slerp(blend_track->rot.normalized(), blend).normalized();
+                                rot = (rot * q).normalized();
+                                break;						
+                            }
+                        case BlendMode::BLEND: 
+                            {
+                                pos = pos.lerp(blend_track->pos, blend);
+                                rot = rot.slerp(blend_track->rot, blend).normalized();
+                                break;
+                            }
+                    } 
+                    
+                    scale = scale.lerp(blend_track->scale, abs(blend));
+
+                    track->pos = pos;
+                    track->scale = scale;
+                    track->rot = rot;
+                }
+            }
+        }
+    }
+    
+    static void _register_methods() {
+        ADD_SETTER(Anime, set_animation_player, animation_player, nullptr);
+        ADD_GETTER(Anime, get_animation_player);
+        ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "animation_player"), "set_animation_player", "get_animation_player");
+
+        ADD_SETTER(Anime, set_root_bone, root_bone, "");
+        ADD_GETTER(Anime, get_root_bone);
+        ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_bone"), "set_root_bone", "get_root_bone");
+        
+        ADD_SETTER(Anime, set_root_transform, root, Transform3D());
+        ADD_GETTER(Anime, get_root_transform);
+        ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM3D, "root_transform"), "set_root_transform", "get_root_transform");
+
+        ClassDB::bind_method(D_METHOD("apply_animation_state"), &Anime::apply_animation_state);
+        ClassDB::bind_method(D_METHOD("play_animation"), &Anime::play_animation);
+        ClassDB::bind_method(D_METHOD("blend_animation"), &Anime::blend_animation);
+        ClassDB::bind_method(D_METHOD("blend_animation_filter"), &Anime::blend_animation_filter);
+        ClassDB::bind_method(D_METHOD("add_animation"), &Anime::add_animation);
+        ClassDB::bind_method(D_METHOD("add_animation_filter"), &Anime::add_animation_filter);
+        ClassDB::bind_method(D_METHOD("sub_animation"), &Anime::sub_animation);
+        ClassDB::bind_method(D_METHOD("sub_animation_filter"), &Anime::sub_animation_filter);
+    }
+
+};
+
+/*
+
+struct BlendPoint {
+    AnimationState* animation_state = nullptr;
+    Vector2 position = Vector2();
+};
+
+typedef struct BlendPoint BlendPoint;
+
+class BlendSpace2D : public RefCounted {
+    GDCLASS(BlendSpace2D, RefCounted);
+public:
+    BlendSpace2D() { }
+    void _init() { }
+
+    void add_blend_point(AnimationPlayer* player, String animation_name, Vector2 p_position) {
+		Ref<Animation> animation = player->get_animation(animation_name);
+		if (animation == nullptr) {
+			//Godot::print("Animation (%s) not found!" % [animation_name]);
+			return;
+        }
+		
+		//animation->set_resource_name(animation_name);
+
+		BlendPoint blend_point = BlendPoint();
+		blend_point.animation_state = AnimationState::_new();
+		blend_point.animation_state->init(*animation);
+		blend_point.position = p_position;
+		blend_points.push_back(blend_point);
+    }
+
+    BlendPoint* get_blend_point(int idx) {
+		if (idx < blend_points.size()) {
+			return &blend_points[idx];
+        } else {
+			return nullptr;
+        }
+    }
+
+    Array get_triangle(Vector2 p_position) {
+		bool first = false;
+		Vector2 best_point = Vector2::INF;
+		Array best_tri;
+        Array res;
+		
+		for (int i = 0; i < triangles.size(); i++) {
+            Array tri = triangles[i];
+			for (int x = 0; x < tri.size(); x++) {
+				int index = tri[x];
+                if (p_position.distance_to(blend_points[index].position) < CMP_EPSILON) {
+                    res.push_back(tri);
+                    res.push_back(p_position);
+					return res;
+                }
+            }
+
+			Vector2 centroid = (blend_points[tri[0]].position + blend_points[tri[1]].position + blend_points[tri[2]].position) / 3.0;
+			Vector2 dir0 = centroid.direction_to(blend_points[tri[0]].position) * CMP_EPSILON;
+			Vector2 dir1 = centroid.direction_to(blend_points[tri[1]].position) * CMP_EPSILON;
+			Vector2 dir2 = centroid.direction_to(blend_points[tri[2]].position) * CMP_EPSILON;
+			if (Geometry::get_singleton()->point_is_inside_triangle( p_position, blend_points[tri[0]].position + dir0, blend_points[tri[1]].position + dir1, blend_points[tri[2]].position + dir2)) {
+                res.push_back(tri);
+                res.push_back(p_position);
+				return res;
+            }
+			
+			// Get closest segment
+			for (int j = 0; j < 3; j++) {
+				Vector2 closest = Geometry::get_singleton()->get_closest_point_to_segment_2d(p_position, blend_points[tri[j]].position, blend_points[tri[(j + 1) % 3]].position);
+				if (first || closest.distance_to(p_position) < best_point.distance_to(p_position)) {
+					best_point = closest;
+					first = false;
+					best_tri = tri;
+                }
+            }
+        }
+
+        res.push_back(best_tri);
+        res.push_back(best_point);
+		return res;
+    }
+
+    AnimationState* get_animation_state(Vector2 p_position, float delta) {
+		p_position.x = Math::clamp(p_position.x, -1.0f, 1.0f);
+		p_position.y = Math::clamp(p_position.y, -1.0f, 1.0f);
+		
+		Array res = get_triangle(p_position);
+		Array triangle = res[0];
+		if (res[1] != Vector2::INF) {
+			p_position = res[1];
+        }
+		
+		// Update all animations in sync
+		for (int i = 0; i < blend_points.size(); i++) {
+            BlendPoint bp = blend_points[i];
+			root->play_animation(bp.animation_state, delta, false);
+        }
+		
+        AnimationState* states[3] = {
+            blend_points[triangle[0]].animation_state->copy(),
+            blend_points[triangle[1]].animation_state->copy(),
+            blend_points[triangle[2]].animation_state->copy()
+        };
+		
+		Vector2 positions[3] = {
+			blend_points[triangle[0]].position,
+			blend_points[triangle[1]].position,
+			blend_points[triangle[2]].position
+        };
+		
+		if (p_position.distance_squared_to(positions[0]) < CMP_EPSILON) {
+            states[1]->free();
+            states[2]->free();
+            root->play_animation(states[0], 0.0, true);
+			return states[0];
+        }
+		
+		if (p_position.distance_squared_to(positions[1]) < CMP_EPSILON) {
+            states[0]->free();
+            states[2]->free();
+            root->play_animation(states[1], 0.0, true);
+			return states[1];
+        }
+		
+		if (p_position.distance_squared_to(positions[2]) < CMP_EPSILON) {
+            states[0]->free();
+            states[1]->free();
+            root->play_animation(states[2], 0.0, true);
+			return states[2];
+        }
+		
+		Vector2 v0 = positions[1] - positions[0];
+		Vector2 v1 = positions[2] - positions[0];
+		Vector2 v2 = p_position - positions[0];
+		
+		real_t d00 = v0.dot(v0);
+		real_t d01 = v0.dot(v1);
+		real_t d11 = v1.dot(v1);
+		real_t d20 = v2.dot(v0);
+		real_t d21 = v2.dot(v1);
+		real_t denom = (d00 * d11 - d01 * d01);
+		if (denom == 0) {
+            states[1]->free();
+            states[2]->free();
+            root->play_animation(states[0], 0.0, true);
+			return states[0];
+        }
+		
+		real_t v = (d11 * d20 - d01 * d21) / denom;
+		real_t w = (d00 * d21 - d01 * d20) / denom;
+		real_t u = 1.0 - v - w;
+		
+		root->play_animation(states[0], 0.0, true);
+        root->play_animation(states[1], 0.0, true);
+        root->play_animation(states[2], 0.0, true);
+
+		root->blend_animation(states[0], states[1], v);
+		root->blend_animation(states[0], states[2], w);
+        states[1]->free();
+        states[2]->free();
+		return states[0];
+    }
+
+    static void _register_methods() {
+        register_method("add_blend_point", &BlendSpace2D::add_blend_point);
+        register_method("get_blend_point", &BlendSpace2D::get_blend_point);
+        register_method("get_triangle", &BlendSpace2D::get_triangle);
+        register_method("get_animation_state", &BlendSpace2D::get_animation_state);
+
+        register_property<BlendSpace2D, Anime*>("root", &BlendSpace2D::root, nullptr);
+        register_property<BlendSpace2D, Array>("triangles", &BlendSpace2D::triangles, Array());
+        //register_property<BlendSpace2D, Array>("blend_points", &BlendSpace2D::blend_points, Array());
+    }
+
+    Anime* root = nullptr;
+    vector<BlendPoint> blend_points;
+    Array triangles;
+};
+
+*/
+
+/*
+class Anime : public RefCounted {
+    GDCLASS(Anime, RefCounted);
+public:
+    Anime() { }
+
+    // `_init` must exist as it is called by Godot. 
+    void _init() { }
+
+    void test_void_method() {
+        Godot::print("This is test");
+    }
+
+    Variant method(Variant arg) {
+        Variant ret;
+        ret = arg;
+
+        return ret;
+    }
+
+    static void _register_methods() {
+        register_method("test_void_method", &Anime::test_void_method);
+        register_method("method", &Anime::method);
+
+        
+        // * The line below is equivalent to the following GDScript export:
+        // *     export var _name = "Anime"
+        register_property<Anime, String>("base/name", &Anime::_name, String("Anime"));
+
+        // Alternatively, with getter and setter methods: 
+        register_property<Anime, int>("base/value", &Anime::set_value, &Anime::get_value, 0);
+
+        // Registering a signal: 
+        // register_signal<Anime>("signal_name");
+        // register_signal<Anime>("signal_name", "string_argument", GODOT_VARIANT_TYPE_STRING)
+    }
+
+    String _name;
+    int _value;
+
+    void set_value(int p_value) {
+        _value = p_value;
+    }
+
+    int get_value() const {
+        return _value;
+    }
+};
+*/
+
+#endif

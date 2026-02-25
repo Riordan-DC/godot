@@ -1,0 +1,31 @@
+Import('env')
+
+# Append CCFLAGS flags for both C and C++ code.
+
+module_path = Dir('.').srcnode().abspath
+
+# env.Append(CPPPATH=["%s/ozz/src_fused/" % module_path])
+# env.Append(LIBPATH=["%s/ozz/include" % module_path])
+# env.Append(LIBPATH=["%s" % module_path])
+
+
+# If you need to, you can:
+# - Append CFLAGS for C code only.
+# - Append CXXFLAGS for C++ code only.
+#sources += Glob("ozz/src_fused/*.cc")
+# CPPPATHS += ["ozz/include"]
+
+# env.Append(CPPPATH=["%s/ozz/include/" % module_path])
+module_env = env.Clone()
+module_env.disable_warnings()
+# module_env.Append(CCFLAGS=['-O2'])
+
+env_ozz = module_env.Clone()
+env_ozz.disable_warnings()
+env_ozz.Append(CPPPATH=["%s/ozz/include" % module_path])
+env_ozz.add_source_files(env.modules_sources, Glob("%s/ozz/src_fused/*.cc" % module_path))
+
+module_env.add_source_files(env.modules_sources, "*.cpp")
+# module_env.add_source_files(env.modules_sources, Glob("%s/ozz/src_fused/*.cc" % module_path))
+# module_env.Append(CPPPATH=["ozz/src_fused/*.cc"])
+module_env.Append(CPPPATH=["%s/ozz/include" % module_path])
