@@ -20,8 +20,7 @@
 // #include <windows.h>
 // #endif
 
-#define ADD_GETTER(class, name) ClassDB::bind_method(D_METHOD(#name), &##class ::##name);
-#define ADD_SETTER(class, name, arg, defval) ClassDB::bind_method(D_METHOD(#name, #arg), &##class ::##name, DEFVAL(##defval));
+
 
 #include "core/object/class_db.h"
 #include "core/string/print_string.h"
@@ -33,6 +32,9 @@
 #include "scene/resources/animation.h"
 #include "core/math/geometry_2d.h"
 #include "core/templates/a_hash_map.h"
+
+#define ADD_GETTER(class, name) ClassDB::bind_method(D_METHOD(#name), &class::name);
+#define ADD_SETTER(class, name, arg, defval) ClassDB::bind_method(D_METHOD(#name, #arg), &class::name, DEFVAL(defval));
 
 #include <vector>
 #include <cmath>
@@ -68,7 +70,7 @@ public:
     Quaternion rest_rot;
 
     // Value
-    Variant value;
+    Variant value = 0;
 
     // Bezier
     float bezier;
@@ -904,7 +906,7 @@ public:
             // HANDLE CASE WHERE BLEND_POS IS ON POINT
             for (int x = 0; x < tri.size(); x++)
             {
-                int index = tri[x];
+                int index = (int)tri[x];
                 if (p_position.distance_to(blend_points[index].position) <= CMP_EPSILON)
                 {
                     Ref<AnimationState> as = blend_points[index].animation_state;
@@ -914,22 +916,22 @@ public:
             }
 
             // HANDLE CASE WHERE BLEND_POS IS INSIDE TRIANGLE
-            // Vector2 centroid = (blend_points[tri[0]].position + blend_points[tri[1]].position + blend_points[tri[2]].position) / 3.0;
-            Vector2 dir0; // = centroid.direction_to(blend_points[tri[0]].position) * CMP_EPSILON;
-            Vector2 dir1; // = centroid.direction_to(blend_points[tri[1]].position) * CMP_EPSILON;
-            Vector2 dir2; // = centroid.direction_to(blend_points[tri[2]].position) * CMP_EPSILON;
-            if (Geometry2D::is_point_in_triangle(p_position, blend_points[tri[0]].position + dir0, blend_points[tri[1]].position + dir1, blend_points[tri[2]].position + dir2))
+            // Vector2 centroid = (blend_points[(int)tri[0]].position + blend_points[(int)tri[1]].position + blend_points[(int)tri[2]].position) / 3.0;
+            Vector2 dir0; // = centroid.direction_to(blend_points[(int)tri[0]].position) * CMP_EPSILON;
+            Vector2 dir1; // = centroid.direction_to(blend_points[(int)tri[1]].position) * CMP_EPSILON;
+            Vector2 dir2; // = centroid.direction_to(blend_points[(int)tri[2]].position) * CMP_EPSILON;
+            if (Geometry2D::is_point_in_triangle(p_position, blend_points[(int)tri[0]].position + dir0, blend_points[(int)tri[1]].position + dir1, blend_points[(int)tri[2]].position + dir2))
             {
 
                 Ref<AnimationState> states[3] = {
-                    blend_points[tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
-                    blend_points[tri[1]].animation_state,
-                    blend_points[tri[2]].animation_state};
+                    blend_points[(int)tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
+                    blend_points[(int)tri[1]].animation_state,
+                    blend_points[(int)tri[2]].animation_state};
 
                 Vector2 positions[3] = {
-                    blend_points[tri[0]].position,
-                    blend_points[tri[1]].position,
-                    blend_points[tri[2]].position};
+                    blend_points[(int)tri[0]].position,
+                    blend_points[(int)tri[1]].position,
+                    blend_points[(int)tri[2]].position};
 
                 if (p_position.distance_squared_to(positions[0]) <= CMP_EPSILON)
                 {
@@ -983,8 +985,8 @@ public:
             // Get closest segment
             for (int j = 0; j < 3; j++)
             {
-                Vector2 segment_a = blend_points[tri[j]].position;
-                Vector2 segment_b = blend_points[tri[(j + 1) % 3]].position;
+                Vector2 segment_a = blend_points[(int)tri[j]].position;
+                Vector2 segment_b = blend_points[(int)tri[(j + 1) % 3]].position;
                 Vector2 closest = Geometry2D::get_closest_point_to_segment(p_position, segment_a, segment_b);
                 if (first || closest.distance_to(p_position) < best_point.distance_to(p_position))
                 {
@@ -1012,9 +1014,9 @@ public:
 
         // If here, must be outside triangle case
         Ref<AnimationState> states[3] = {
-            blend_points[best_tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
-            blend_points[best_tri[1]].animation_state,
-            blend_points[best_tri[2]].animation_state};
+            blend_points[(int)best_tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
+            blend_points[(int)best_tri[1]].animation_state,
+            blend_points[(int)best_tri[2]].animation_state};
 
         if (Math::is_equal_approx(blend_weights[0], 1.0f))
         {

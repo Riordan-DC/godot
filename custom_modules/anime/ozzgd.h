@@ -36,8 +36,8 @@
 #include <windows.h>
 #endif
 
-#define ADD_GETTER(class, name) ClassDB::bind_method(D_METHOD(#name), &##class ::##name);
-#define ADD_SETTER(class, name, arg, defval) ClassDB::bind_method(D_METHOD(#name, #arg), &##class ::##name, DEFVAL(##defval));
+#define ADD_GETTER(class, name) ClassDB::bind_method(D_METHOD(#name), &class ::name);
+#define ADD_SETTER(class, name, arg, defval) ClassDB::bind_method(D_METHOD(#name, #arg), &class ::name, DEFVAL(defval));
 
 #include "core/object/class_db.h"
 #include "core/string/print_string.h"
