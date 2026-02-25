@@ -74,18 +74,8 @@ S_API bool SteamGameServer_BSecure();
 S_API uint64 SteamGameServer_GetSteamID();
 
 // Older SDKs exported this global pointer, but it is no longer supported.
-<<<<<<< HEAD
-<<<<<<< HEAD
 // You should use SteamGameServerClient() to safely access the ISteamClient
 // APIs from your game server application.
-=======
-// You should use SteamGameServerClient() or CSteamGameServerAPIContext to
-// safely access the ISteamClient APIs from your game server application.
->>>>>>> 502ae11a7c (steam sdk)
-=======
-// You should use SteamGameServerClient() to safely access the ISteamClient
-// APIs from your game server application.
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 //S_API ISteamClient *g_pSteamClientGameServer;
 
 // SteamGameServer_InitSafe has been replaced with SteamGameServer_Init and
@@ -98,35 +88,6 @@ S_API uint64 SteamGameServer_GetSteamID();
 //
 //=============================================================================
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-#ifndef STEAM_API_EXPORTS
-// This function must be declared inline in the header so the module using steam_api.dll gets the version names they want.
-inline bool CSteamGameServerAPIContext::Init()
-{
-	m_pSteamClient = ::SteamGameServerClient();
-	if ( !m_pSteamClient )
-		return false;
-
-	m_pSteamGameServer = ::SteamGameServer();
-	m_pSteamGameServerUtils = ::SteamGameServerUtils();
-	m_pSteamGameServerNetworking = ::SteamGameServerNetworking();
-	m_pSteamGameServerStats = ::SteamGameServerStats();
-	m_pSteamHTTP = ::SteamGameServerHTTP();
-	m_pSteamInventory = ::SteamGameServerInventory();
-	m_pSteamUGC = ::SteamGameServerUGC();
-	if ( !m_pSteamGameServer || !m_pSteamGameServerUtils || !m_pSteamGameServerNetworking || !m_pSteamGameServerStats
-		|| !m_pSteamHTTP || !m_pSteamInventory || !m_pSteamUGC )
-		return false;
-
-	return true;
-}
-#endif
-
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 S_API ESteamAPIInitResult S_CALLTYPE SteamInternal_GameServer_Init_V2( uint32 unIP, uint16 usGamePort, uint16 usQueryPort, EServerMode eServerMode, const char *pchVersionString, const char *pszInternalCheckInterfaceVersions, SteamErrMsg *pOutErrMsg );
 inline ESteamAPIInitResult SteamGameServer_InitEx( uint32 unIP, uint16 usGamePort, uint16 usQueryPort, EServerMode eServerMode, const char *pchVersionString, SteamErrMsg *pOutErrMsg )
 {

@@ -482,20 +482,98 @@ enum EInputActionOrigin
 	k_EInputActionOrigin_SteamDeck_Reserved19,
 	k_EInputActionOrigin_SteamDeck_Reserved20,
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	k_EInputActionOrigin_Horipad_M1,
 	k_EInputActionOrigin_Horipad_M2,
 	k_EInputActionOrigin_Horipad_L4,
 	k_EInputActionOrigin_Horipad_R4,
 
-<<<<<<< HEAD
-=======
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
+	k_EInputActionOrigin_LenovoLegionGo_A,
+	k_EInputActionOrigin_LenovoLegionGo_B,
+	k_EInputActionOrigin_LenovoLegionGo_X,
+	k_EInputActionOrigin_LenovoLegionGo_Y,
+	k_EInputActionOrigin_LenovoLegionGo_LB,
+	k_EInputActionOrigin_LenovoLegionGo_RB,
+	k_EInputActionOrigin_LenovoLegionGo_Menu,
+	k_EInputActionOrigin_LenovoLegionGo_View,
+	k_EInputActionOrigin_LenovoLegionGo_LeftPad_Touch, // Left pad is only present on the original Legion Go
+	k_EInputActionOrigin_LenovoLegionGo_LeftPad_Swipe,
+	k_EInputActionOrigin_LenovoLegionGo_LeftPad_Click,
+	k_EInputActionOrigin_LenovoLegionGo_LeftPad_DPadNorth,
+	k_EInputActionOrigin_LenovoLegionGo_LeftPad_DPadSouth,
+	k_EInputActionOrigin_LenovoLegionGo_LeftPad_DPadWest,
+	k_EInputActionOrigin_LenovoLegionGo_LeftPad_DPadEast,
+	k_EInputActionOrigin_LenovoLegionGo_RightPad_Touch,
+	k_EInputActionOrigin_LenovoLegionGo_RightPad_Swipe,
+	k_EInputActionOrigin_LenovoLegionGo_RightPad_Click,
+	k_EInputActionOrigin_LenovoLegionGo_RightPad_DPadNorth,
+	k_EInputActionOrigin_LenovoLegionGo_RightPad_DPadSouth,
+	k_EInputActionOrigin_LenovoLegionGo_RightPad_DPadWest,
+	k_EInputActionOrigin_LenovoLegionGo_RightPad_DPadEast,
+	k_EInputActionOrigin_LenovoLegionGo_LT_SoftPull,
+	k_EInputActionOrigin_LenovoLegionGo_LT,
+	k_EInputActionOrigin_LenovoLegionGo_RT_SoftPull,
+	k_EInputActionOrigin_LenovoLegionGo_RT,
+	k_EInputActionOrigin_LenovoLegionGo_LeftStick_Move,
+	k_EInputActionOrigin_LenovoLegionGo_LS,
+	k_EInputActionOrigin_LenovoLegionGo_LeftStick_DPadNorth,
+	k_EInputActionOrigin_LenovoLegionGo_LeftStick_DPadSouth,
+	k_EInputActionOrigin_LenovoLegionGo_LeftStick_DPadWest,
+	k_EInputActionOrigin_LenovoLegionGo_LeftStick_DPadEast,
+	k_EInputActionOrigin_LenovoLegionGo_RightStick_Move,
+	k_EInputActionOrigin_LenovoLegionGo_RS,
+	k_EInputActionOrigin_LenovoLegionGo_RightStick_DPadNorth,
+	k_EInputActionOrigin_LenovoLegionGo_RightStick_DPadSouth,
+	k_EInputActionOrigin_LenovoLegionGo_RightStick_DPadWest,
+	k_EInputActionOrigin_LenovoLegionGo_RightStick_DPadEast,
+	k_EInputActionOrigin_LenovoLegionGo_Y1,
+	k_EInputActionOrigin_LenovoLegionGo_Y2,
+	k_EInputActionOrigin_LenovoLegionGo_DPad_Move,
+	k_EInputActionOrigin_LenovoLegionGo_DPad_North,
+	k_EInputActionOrigin_LenovoLegionGo_DPad_South,
+	k_EInputActionOrigin_LenovoLegionGo_DPad_West,
+	k_EInputActionOrigin_LenovoLegionGo_DPad_East,
+	k_EInputActionOrigin_LenovoLegionGo_Gyro_Move,
+	k_EInputActionOrigin_LenovoLegionGo_Gyro_Pitch,
+	k_EInputActionOrigin_LenovoLegionGo_Gyro_Yaw,
+	k_EInputActionOrigin_LenovoLegionGo_Gyro_Roll,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved1,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved2,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved3,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved4,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved5,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved6,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved7,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved8,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved9,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved10,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved11,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved12,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved13,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved14,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved15,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved16,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved17,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved18,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved19,
+	k_EInputActionOrigin_LenovoLegionGo_Reserved20,
+
+	k_EInputActionOrigin_Generic_L4,
+	k_EInputActionOrigin_Generic_R4,
+	k_EInputActionOrigin_Generic_L5,
+	k_EInputActionOrigin_Generic_R5,
+	k_EInputActionOrigin_Generic_PL,
+	k_EInputActionOrigin_Generic_PR,
+	k_EInputActionOrigin_Generic_C,
+	k_EInputActionOrigin_Generic_Z,
+	k_EInputActionOrigin_Generic_MISC1,
+	k_EInputActionOrigin_Generic_MISC2,
+	k_EInputActionOrigin_Generic_MISC3,
+	k_EInputActionOrigin_Generic_MISC4,
+	k_EInputActionOrigin_Generic_MISC5,
+	k_EInputActionOrigin_Generic_MISC6,
+	k_EInputActionOrigin_Generic_MISC7,
+	k_EInputActionOrigin_Generic_MISC8,
+
 	k_EInputActionOrigin_Count, // If Steam has added support for new controllers origins will go here.
 	k_EInputActionOrigin_MaximumPossibleValue = 32767, // Origins are currently a maximum of 16 bits.
 };
@@ -657,10 +735,6 @@ struct InputDigitalActionData_t
 
 struct InputMotionData_t
 {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	// Gyro Quaternion:
 	// Absolute rotation of the controller since wakeup, using the Accelerometer reading at startup to determine the first value.
 	// This means real world "up" is know, but heading is not known.
@@ -673,29 +747,18 @@ struct InputMotionData_t
 
 	// Filtering: When rotating the controller at low speeds, low level noise is filtered out without noticeable latency. High speed movement is always unfiltered.
 	// Drift: Gyroscopic "Drift" can be fixed using the Steam Input "Gyro Calibration" button. Users will have to be informed of this feature.
-<<<<<<< HEAD
-=======
-	// Sensor-fused absolute rotation; will drift in heading toward average
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	float rotQuatX;
 	float rotQuatY;
 	float rotQuatZ;
 	float rotQuatW;
 
 	// Positional acceleration
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	// This represents only the latest hardware packet's state.
 	// Values range from -SHRT_MAX..SHRT_MAX
 	// This represents -2G..+2G along each axis
 	float posAccelX; // +tive when controller's Right hand side is pointed toward the sky.
 	float posAccelY; // +tive when controller's charging port (forward side of controller) is pointed toward the sky.
 	float posAccelZ; // +tive when controller's sticks point toward the sky.
-<<<<<<< HEAD
 
 	// Angular velocity
 	// Values range from -SHRT_MAX..SHRT_MAX
@@ -704,26 +767,6 @@ struct InputMotionData_t
 	float rotVelX; // Local Pitch
 	float rotVelY; // Local Roll
 	float rotVelZ; // Local Yaw
-=======
-	float posAccelX;
-	float posAccelY;
-	float posAccelZ;
-
-	// Angular velocity
-	float rotVelX;
-	float rotVelY;
-	float rotVelZ;
->>>>>>> 502ae11a7c (steam sdk)
-=======
-
-	// Angular velocity
-	// Values range from -SHRT_MAX..SHRT_MAX
-	// These values map to a real world range of -2000..+2000 degrees per second on each axis (SDL standard)
-	// This represents only the latest hardware packet's state.
-	float rotVelX; // Local Pitch
-	float rotVelY; // Local Roll
-	float rotVelZ; // Local Yaw
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 };
 
 //-----------------------------------------------------------------------------

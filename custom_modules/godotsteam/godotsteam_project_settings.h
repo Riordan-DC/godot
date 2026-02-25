@@ -1,5 +1,5 @@
 //================================================================================================//
-// GodotSteam - register_types.h
+// GodotSteam - godotsteam_project_settings.h
 //================================================================================================//
 //
 // Copyright (c) 2015-Current | GP Garcia, Chris Ridenour, and Contributors
@@ -26,12 +26,23 @@
 //
 //================================================================================================//
 
-#ifndef GODOTSTEAM_REGISTER_TYPES_H
-#define GODOTSTEAM_REGISTER_TYPES_H
+#ifndef GODOTSTEAM_PROJECT_SETTINGS_H
+#define GODOTSTEAM_PROJECT_SETTINGS_H
 
-#include "modules/register_module_types.h"
 
-void initialize_godotsteam_module(ModuleInitializationLevel level);
-void uninitialize_godotsteam_module(ModuleInitializationLevel level);
+#include "core/config/project_settings.h"
 
-#endif
+
+class SteamProjectSettings {
+
+public:
+	static void register_settings();
+
+	static int get_app_id();
+	static bool get_auto_init();
+	static bool get_embed_callbacks();
+	static int get_max_channels();
+};
+
+
+#endif // GODOTSTEAM_PROJECT_SETTINGS_H

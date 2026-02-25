@@ -3532,11 +3532,7 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 
 			{ //compute coverage
 
-<<<<<<< HEAD
-				Transform3D cam_xf = p_camera_data->main_transform;
-=======
 				Transform3D cam_xf = p_camera_data->main_projection;
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 				float zn = p_camera_data->main_projection.get_z_near();
 				Plane p(-cam_xf.basis.get_column(2), cam_xf.origin + cam_xf.basis.get_column(2) * -zn); //camera near plane
 

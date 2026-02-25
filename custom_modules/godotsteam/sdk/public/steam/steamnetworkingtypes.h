@@ -143,16 +143,6 @@ enum ESteamNetworkingIdentityType
 	k_ESteamNetworkingIdentityType_SteamID = 16, // 64-bit CSteamID
 	k_ESteamNetworkingIdentityType_XboxPairwiseID = 17, // Publisher-specific user identity, as string
 	k_ESteamNetworkingIdentityType_SonyPSN = 18, // 64-bit ID
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-	k_ESteamNetworkingIdentityType_GoogleStadia = 19, // 64-bit ID
-	//k_ESteamNetworkingIdentityType_NintendoNetworkServiceAccount,
-	//k_ESteamNetworkingIdentityType_EpicGameStore
-	//k_ESteamNetworkingIdentityType_WeGame
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 	//
 	// Special identifiers.
@@ -287,15 +277,6 @@ struct SteamNetworkingIdentity
 	void SetPSNID( uint64 id );
 	uint64 GetPSNID() const; // Returns 0 if not PSN
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-	void SetStadiaID( uint64 id );
-	uint64 GetStadiaID() const; // Returns 0 if not Stadia
-
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	void SetIPAddr( const SteamNetworkingIPAddr &addr ); // Set to specified IP:port
 	const SteamNetworkingIPAddr *GetIPAddr() const; // returns null if we are not an IP address.
 	void SetIPv4Addr( uint32 nIPv4, uint16 nPort ); // Set to specified IPv4:port
@@ -351,13 +332,6 @@ struct SteamNetworkingIdentity
 	union {
 		uint64 m_steamID64;
 		uint64 m_PSNID;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-		uint64 m_stadiaID;
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 		char m_szGenericString[ k_cchMaxGenericString ];
 		char m_szXboxPairwiseID[ k_cchMaxXboxPairwiseID ];
 		uint8 m_genericBytes[ k_cbMaxGenericBytes ];
@@ -1407,10 +1381,6 @@ enum ESteamNetworkingConfigValue
 	/// generic platform UI.  (Only available on Steam.)
 	k_ESteamNetworkingConfig_EnableDiagnosticsUI = 46,
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	/// [connection int32] Send of time-since-previous-packet values in each UDP packet.
 	/// This add a small amount of packet overhead but allows for detailed jitter measurements
 	/// to be made by the receiver.
@@ -1422,11 +1392,6 @@ enum ESteamNetworkingConfigValue
 	///       always send the value.
 	k_ESteamNetworkingConfig_SendTimeSincePreviousPacket = 59,
 
-<<<<<<< HEAD
-=======
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 //
 // Simulating network conditions
 //
@@ -1444,10 +1409,6 @@ enum ESteamNetworkingConfigValue
 	k_ESteamNetworkingConfig_FakePacketLag_Send = 4,
 	k_ESteamNetworkingConfig_FakePacketLag_Recv = 5,
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	/// Simulated jitter/clumping.
 	///
 	/// For each packet, a jitter value is determined (which may
@@ -1487,7 +1448,6 @@ enum ESteamNetworkingConfigValue
 	/// This mechanism is primarily intended to generate out-of-order
 	/// packets.  To simulate random jitter, use the FakePacketJitter.
 	/// Fake packet reordering is applied after fake lag and jitter
-<<<<<<< HEAD
 	k_ESteamNetworkingConfig_FakePacketReorder_Send = 6,
 	k_ESteamNetworkingConfig_FakePacketReorder_Recv = 7,
 
@@ -1496,24 +1456,6 @@ enum ESteamNetworkingConfigValue
 	k_ESteamNetworkingConfig_FakePacketReorder_Time = 8,
 
 	/// [global float 0--100] Globally duplicate some percentage of packets.
-=======
-	/// [global float] 0-100 Percentage of packets we will add additional delay
-	/// to (causing them to be reordered)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
-	k_ESteamNetworkingConfig_FakePacketReorder_Send = 6,
-	k_ESteamNetworkingConfig_FakePacketReorder_Recv = 7,
-
-	/// [global int32] Extra delay, in ms, to apply to reordered
-	/// packets.  The same time value is used for sending and receiving.
-	k_ESteamNetworkingConfig_FakePacketReorder_Time = 8,
-
-<<<<<<< HEAD
-	/// [global float 0--100] Globally duplicate some percentage of packets we send
->>>>>>> 502ae11a7c (steam sdk)
-=======
-	/// [global float 0--100] Globally duplicate some percentage of packets.
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	k_ESteamNetworkingConfig_FakePacketDup_Send = 26,
 	k_ESteamNetworkingConfig_FakePacketDup_Recv = 27,
 
@@ -1954,14 +1896,6 @@ inline bool SteamNetworkingIdentity::SetXboxPairwiseID( const char *pszString ) 
 inline const char *SteamNetworkingIdentity::GetXboxPairwiseID() const { return m_eType == k_ESteamNetworkingIdentityType_XboxPairwiseID ? m_szXboxPairwiseID : NULL; }
 inline void SteamNetworkingIdentity::SetPSNID( uint64 id ) { m_eType = k_ESteamNetworkingIdentityType_SonyPSN; m_cbSize = sizeof( m_PSNID ); m_PSNID = id; }
 inline uint64 SteamNetworkingIdentity::GetPSNID() const { return m_eType == k_ESteamNetworkingIdentityType_SonyPSN ? m_PSNID : 0; }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-inline void SteamNetworkingIdentity::SetStadiaID( uint64 id ) { m_eType = k_ESteamNetworkingIdentityType_GoogleStadia; m_cbSize = sizeof( m_stadiaID ); m_stadiaID = id; }
-inline uint64 SteamNetworkingIdentity::GetStadiaID() const { return m_eType == k_ESteamNetworkingIdentityType_GoogleStadia ? m_stadiaID : 0; }
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 inline void SteamNetworkingIdentity::SetIPAddr( const SteamNetworkingIPAddr &addr ) { m_eType = k_ESteamNetworkingIdentityType_IPAddress; m_cbSize = (int)sizeof(m_ip); m_ip = addr; }
 inline const SteamNetworkingIPAddr *SteamNetworkingIdentity::GetIPAddr() const { return m_eType == k_ESteamNetworkingIdentityType_IPAddress ? &m_ip : NULL; }
 inline void SteamNetworkingIdentity::SetIPv4Addr( uint32 nIPv4, uint16 nPort ) { m_eType = k_ESteamNetworkingIdentityType_IPAddress; m_cbSize = (int)sizeof(m_ip); m_ip.SetIPv4( nIPv4, nPort ); }

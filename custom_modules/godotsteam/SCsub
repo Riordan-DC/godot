@@ -39,4 +39,6 @@ elif env["platform"] == "macos":
 	env.Append(LIBS=["steam_api"])
 	env.Append(LIBPATH=['%s/sdk/redistributable_bin/osx' % module_path])
 
-env.add_source_files(env.modules_sources,"*.cpp")
+env_steam = env.Clone()
+env_steam.disable_warnings()
+env_steam.add_source_files(env.modules_sources,"*.cpp")

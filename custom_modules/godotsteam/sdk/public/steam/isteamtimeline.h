@@ -1,12 +1,4 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 //====== Copyright ï¿½ Valve Corporation, All rights reserved. =======
-=======
-//====== Copyright © Valve Corporation, All rights reserved. =======
->>>>>>> 502ae11a7c (steam sdk)
-=======
-//====== Copyright ï¿½ Valve Corporation, All rights reserved. =======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 //
 // Purpose: interface to Steam Timeline
 //
@@ -55,8 +47,6 @@ enum ETimelineEventClipPriority
 	k_ETimelineEventClipPriority_Featured = 3,
 };
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 const uint32 k_unMaxTimelinePriority = 1000;
 const uint32 k_unTimelinePriority_KeepCurrentValue = 1000000; // Use with UpdateRangeTimelineEvent to not change the priority
@@ -65,21 +55,6 @@ const uint32 k_cchMaxPhaseIDLength = 64;
 
 typedef uint64 TimelineEventHandle_t;
 
-=======
-=======
-
->>>>>>> a06b8b91ef (Updated to godot 4.5)
-const uint32 k_unMaxTimelinePriority = 1000;
-const uint32 k_unTimelinePriority_KeepCurrentValue = 1000000; // Use with UpdateRangeTimelineEvent to not change the priority
-const float k_flMaxTimelineEventDuration = 600.f;
-<<<<<<< HEAD
->>>>>>> 502ae11a7c (steam sdk)
-=======
-const uint32 k_cchMaxPhaseIDLength = 64;
-
-typedef uint64 TimelineEventHandle_t;
-
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 //-----------------------------------------------------------------------------
 // Purpose: Steam Timeline API
@@ -91,21 +66,11 @@ public:
 	// Sets a description for the current game state in the timeline. These help the user to find specific
 	// moments in the timeline when saving clips. Setting a new state description replaces any previous
 	// description.
-<<<<<<< HEAD
-<<<<<<< HEAD
 	//
-=======
-	// 
->>>>>>> 502ae11a7c (steam sdk)
-=======
-	//
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	// Examples could include:
 	//  * Where the user is in the world in a single player game
 	//  * Which round is happening in a multiplayer game
 	//  * The current score for a sports game
-<<<<<<< HEAD
-<<<<<<< HEAD
 	//
 	// Parameters:
 	// - pchDescription: provide a localized string in the language returned by SteamUtils()->GetSteamUILanguage()
@@ -123,44 +88,11 @@ public:
 	// or you can use StartEvent and CloseEvent to customize what gets added.
 	//
 	// Examples of events to add could include:
-=======
-	// 	
-=======
-	//
->>>>>>> a06b8b91ef (Updated to godot 4.5)
-	// Parameters:
-	// - pchDescription: provide a localized string in the language returned by SteamUtils()->GetSteamUILanguage()
-	// - flTimeDelta: The time offset in seconds to apply to this event. Negative times indicate an
-	//			event that happened in the past.
-	virtual void SetTimelineTooltip( const char *pchDescription, float flTimeDelta ) = 0;
-	virtual void ClearTimelineTooltip( float flTimeDelta ) = 0;
-
-<<<<<<< HEAD
-	// Use this to mark an event on the Timeline. The event can be instantaneous or take some amount of time
-	// to complete, depending on the value passed in flDurationSeconds
-	// 
-	// Examples could include:
->>>>>>> 502ae11a7c (steam sdk)
-=======
-	// Changes the color of the timeline bar. See ETimelineGameMode comments for how to use each value
-	virtual void SetTimelineGameMode( ETimelineGameMode eMode ) = 0;
-
-	/*******************    Timeline Events    *******************/
-
-	// The following functions add events and/or tags to the timeline.  There are helpers to add simple events or tags in a single call.
-	// or you can use StartEvent and CloseEvent to customize what gets added.
-	//
-	// Examples of events to add could include:
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	//   * a boss battle
 	//   * a cut scene
 	//   * a large team fight
 	//   * picking up a new weapon or ammunition
 	//   * scoring a goal
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	//
 	// Adding an event and a time range with the simple API:
 	//   SteamTimeline()->AddSimpleTimelineEvent( "steam_heart", Localize( "#user healed" ), Localize( "#health_amount", 27 ), 15, 0, 0, k_ETimelineEventClipPriority_None );
@@ -179,46 +111,20 @@ public:
 	// - ulOpenEvent: An event returned by StartEvent that has not yet had CancelEvent or CloseEvent called on it
 	// - ulEvent: An event that has had CloseEvent called on it, or an event returned from AddSimpleTimelineEvent or AddTaggedTimeRange (which
 	//   are closed automatically.)
-<<<<<<< HEAD
-=======
-	// 	
-	// Parameters:
-	// 
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	// - pchIcon: specify the name of the icon uploaded through the Steamworks Partner Site for your title
 	//   or one of the provided icons that start with steam_
 	// - pchTitle & pchDescription: provide a localized string in the language returned by
 	//	 SteamUtils()->GetSteamUILanguage()
-<<<<<<< HEAD
-<<<<<<< HEAD
 	// - unIconPriority: specify how important this range is compared to other markers provided by the game.
 	//   Ranges with larger priority values will be displayed more prominently in the UI. This value
 	//   may be between 0 and k_unMaxTimelinePriority.
 	// - flStartOffsetSeconds: The time that this range started relative to now. Negative times
-=======
-	// - unPriority: specify how important this range is compared to other markers provided by the game. 
-	//   Ranges with larger priority values will be displayed more prominently in the UI. This value
-	//   may be between 0 and k_unMaxTimelinePriority.
-	// - flStartOffsetSeconds: The time that this range started relative to now. Negative times 
->>>>>>> 502ae11a7c (steam sdk)
-=======
-	// - unIconPriority: specify how important this range is compared to other markers provided by the game.
-	//   Ranges with larger priority values will be displayed more prominently in the UI. This value
-	//   may be between 0 and k_unMaxTimelinePriority.
-	// - flStartOffsetSeconds: The time that this range started relative to now. Negative times
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	//   indicate an event that happened in the past.
 	// - flDurationSeconds: How long the time range should be in seconds. For instantaneous events, this
 	//   should be 0
 	// - ePossibleClip: By setting this parameter to Featured or Standard, the game indicates to Steam that it
 	//   would be appropriate to offer this range as a clip to the user. For instantaneous events, the
 	//   suggested clip will be for a short time before and after the event itself.
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 	// - pchTagIcon: specify an icon name that will be used next to the tag name in the UI
 	// - pchTagName: The localized name of the tag to show in the UI.
 	// - pchTagGroup: The localized name of the tag group to show in the UI. If this is not specified, users will not be able to filter by this tag
@@ -314,34 +220,16 @@ public:
 	// Parameters:
 	// - ulEventID: The ID of a timeline event returned by StartEvent or AddSimpleTimelineEvent
 	virtual void OpenOverlayToTimelineEvent( const TimelineEventHandle_t ulEvent ) = 0;
-<<<<<<< HEAD
 
 };
 
 #define STEAMTIMELINE_INTERFACE_VERSION "STEAMTIMELINE_INTERFACE_V004"
-=======
-	virtual void AddTimelineEvent( const char *pchIcon, const char *pchTitle, const char *pchDescription, uint32 unPriority, float flStartOffsetSeconds, float flDurationSeconds, ETimelineEventClipPriority ePossibleClip ) = 0;
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
-
-};
-
-<<<<<<< HEAD
-#define STEAMTIMELINE_INTERFACE_VERSION "STEAMTIMELINE_INTERFACE_V001"
->>>>>>> 502ae11a7c (steam sdk)
-=======
-#define STEAMTIMELINE_INTERFACE_VERSION "STEAMTIMELINE_INTERFACE_V004"
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 
 // Global interface accessor
 inline ISteamTimeline *SteamTimeline();
 STEAM_DEFINE_USER_INTERFACE_ACCESSOR( ISteamTimeline *, SteamTimeline, STEAMTIMELINE_INTERFACE_VERSION );
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 //-----------------------------------------------------------------------------
 // Purpose: Callback for querying UGC
 //-----------------------------------------------------------------------------
@@ -367,11 +255,6 @@ struct SteamTimelineEventRecordingExists_t
 
 
 
-<<<<<<< HEAD
-=======
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 #pragma pack( pop )
 
 

@@ -7,6 +7,8 @@ def configure(env):
 def get_doc_classes():
 	return [
 		"Steam",
+		"SteamMultiplayerPeer",
+		"SteamPacketPeer"
 	]
 
 def get_doc_path():

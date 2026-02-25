@@ -1,5 +1,5 @@
 //================================================================================================//
-// GodotSteam - register_types.cpp
+// GodotSteam - godotsteam_project_settings.cpp
 //================================================================================================//
 //
 // Copyright (c) 2015-Current | GP Garcia, Chris Ridenour, and Contributors
@@ -26,55 +26,33 @@
 //
 //================================================================================================//
 
-#include "register_types.h"
 
-#include "core/config/engine.h"
-#include "core/object/class_db.h"
-
-#include "godotsteam.h"
-#include "godotsteam_multiplayer_peer.h"
 #include "godotsteam_project_settings.h"
 
 
-static Steam *SteamPtr = nullptr;
-
-
-void initialize_godotsteam_module(ModuleInitializationLevel level) {
-	if (level == MODULE_INITIALIZATION_LEVEL_CORE) {
-		GDREGISTER_CLASS(Steam);
-		SteamPtr = memnew(Steam);
-		Engine::get_singleton()->add_singleton(Engine::Singleton("Steam", Steam::get_singleton()));
- 
-		// Setup Project Settings
-		SteamProjectSettings::register_settings();
-
-		if (Engine::get_singleton()->is_editor_hint()) {
-			return;
-		}
-
-		if (!SteamProjectSettings::get_auto_init()) {
-			return;
-		}
-
-		Steam::get_singleton()->run_internal_initialization();
-	}
-	if (level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
-		ClassDB::register_class<SteamPacketPeer>();
-		ClassDB::register_class<SteamMultiplayerPeer>();
-	}
-	if (level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		if (SteamProjectSettings::get_auto_init() && SteamProjectSettings::get_embed_callbacks()) {
-			WARN_PRINT_ONCE("[STEAM] Cannot use auto-initialization and embed callbacks together currently. Embed callbacks ignored; call run_callbacks() manually.");
-			// This just warns until we can fix the inability to link to SceneTree this early.
-			// Steam::get_singleton()->set_internal_callbacks();
-		}
-	}
+void SteamProjectSettings::register_settings() {
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "steam/initialization/app_id"), 0);
+	GLOBAL_DEF(PropertyInfo(Variant::BOOL, "steam/initialization/initialize_on_startup"), false);
+	GLOBAL_DEF(PropertyInfo(Variant::BOOL, "steam/initialization/embed_callbacks"), false);
+	GLOBAL_DEF(PropertyInfo(Variant::BOOL, "steam/multiplayer_peer/max_channels"), 4);
 }
 
 
-void uninitialize_godotsteam_module(ModuleInitializationLevel level) {
-	if (level == MODULE_INITIALIZATION_LEVEL_CORE) {
-		Engine::get_singleton()->remove_singleton("Steam");
-		memdelete(SteamPtr);
-	}
+int SteamProjectSettings::get_app_id() {
+	return GLOBAL_GET("steam/initialization/app_id");
+}
+
+
+bool SteamProjectSettings::get_auto_init() {
+	return GLOBAL_GET("steam/initialization/initialize_on_startup");
+}
+
+
+bool SteamProjectSettings::get_embed_callbacks() {
+	return GLOBAL_GET("steam/initialization/embed_callbacks");
+}
+
+
+int SteamProjectSettings::get_max_channels() {
+	return GLOBAL_GET("steam/multiplayer_peer/max_channels");
 }

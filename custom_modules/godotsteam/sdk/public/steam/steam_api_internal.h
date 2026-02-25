@@ -223,15 +223,7 @@ class ISteamNetworking;
 class ISteamRemoteStorage;
 class ISteamScreenshots;
 class ISteamMusic;
-class ISteamMusicRemote;
 class ISteamGameServerStats;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-class ISteamPS3OverlayRender;
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
 class ISteamHTTP;
 class ISteamController;
 class ISteamUGC;
@@ -239,7 +231,6 @@ class ISteamHTMLSurface;
 class ISteamInventory;
 class ISteamVideo;
 class ISteamParentalSettings;
-class ISteamGameSearch;
 class ISteamInput;
 class ISteamParties;
 class ISteamRemotePlay;
@@ -278,7 +269,6 @@ enum { k_iSteamControllerCallbacks = 2800 };
 enum { k_iSteamUGCCallbacks = 3400 };
 enum { k_iSteamStreamClientCallbacks = 3500 };
 enum { k_iSteamMusicCallbacks = 4000 };
-enum { k_iSteamMusicRemoteCallbacks = 4100 };
 enum { k_iSteamGameNotificationCallbacks = 4400 }; 
 enum { k_iSteamHTMLSurfaceCallbacks = 4500 };
 enum { k_iSteamVideoCallbacks = 4600 };
@@ -313,38 +303,3 @@ enum { k_iSteamTimelineCallbacks = 6000 };
 #define STEAM_CALL_RESULT(RESULT_TYPE) STEAM_CLANG_ATTR("callresult:" #RESULT_TYPE ";")
 #define STEAM_CALL_BACK(RESULT_TYPE) STEAM_CLANG_ATTR("callback:" #RESULT_TYPE ";")
 #define STEAM_FLAT_NAME(NAME) STEAM_CLANG_ATTR("flat_name:" #NAME ";")
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
-class CSteamGameServerAPIContext
-{
-public:
-	CSteamGameServerAPIContext() { Clear(); }
-	inline void Clear() { memset( this, 0, sizeof(*this) ); }
-	inline bool Init(); // NOTE: This is defined in steam_gameserver.h, to avoid this file having to include everything
-
-	ISteamClient *SteamClient() const					{ return m_pSteamClient; }
-	ISteamGameServer *SteamGameServer() const			{ return m_pSteamGameServer; }
-	ISteamUtils *SteamGameServerUtils() const			{ return m_pSteamGameServerUtils; }
-	ISteamNetworking *SteamGameServerNetworking() const	{ return m_pSteamGameServerNetworking; }
-	ISteamGameServerStats *SteamGameServerStats() const	{ return m_pSteamGameServerStats; }
-	ISteamHTTP *SteamHTTP() const						{ return m_pSteamHTTP; }
-	ISteamInventory *SteamInventory() const				{ return m_pSteamInventory; }
-	ISteamUGC *SteamUGC() const							{ return m_pSteamUGC; }
-
-private:
-	ISteamClient				*m_pSteamClient;
-	ISteamGameServer			*m_pSteamGameServer;
-	ISteamUtils					*m_pSteamGameServerUtils;
-	ISteamNetworking			*m_pSteamGameServerNetworking;
-	ISteamGameServerStats		*m_pSteamGameServerStats;
-	ISteamHTTP					*m_pSteamHTTP;
-	ISteamInventory				*m_pSteamInventory;
-	ISteamUGC					*m_pSteamUGC;
-};
-
-
->>>>>>> 502ae11a7c (steam sdk)
-=======
->>>>>>> a06b8b91ef (Updated to godot 4.5)
