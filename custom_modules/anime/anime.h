@@ -39,9 +39,9 @@
 #include <vector>
 #include <cmath>
 
-class TrackCache : public RefCounted
+class TrackCache : public Object
 {
-    GDCLASS(TrackCache, RefCounted);
+    GDCLASS(TrackCache, Object);
 
 public:
     // Animation::TrackType type = Animation::TrackType::TYPE_POSITION_3D;
@@ -142,7 +142,7 @@ public:
 
             int thash = TrackCache::make_thash(path.get_concatenated_subnames());
 
-            TrackCache *track = nullptr;
+            TrackCache* track = nullptr;
             if (track_cache.has(thash))
             {
                 track = track_cache.get(thash);

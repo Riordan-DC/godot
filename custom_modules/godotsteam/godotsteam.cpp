@@ -36,6 +36,8 @@
 
 
 // Include GodotSteam header
+#include "core/object/class_db.h"
+#include "core/object/callable_mp.h"
 #include "godotsteam.h"
 
 // Include some system headers

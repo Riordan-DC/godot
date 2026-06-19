@@ -2750,10 +2750,12 @@ void RendererSceneCull::render_camera(const Ref<RenderSceneBuffers> &p_render_bu
 			} break;
 		}
 
+		Projection shadow_projection = main_projection; // Shadow projection is normal projection without oblique modification
 		if (camera->use_oblique_frustum) {
 			main_projection.apply_oblique_plane(get_camera_oblique_plane(p_camera));
 		}
-		camera_data.set_camera(transform, main_projection, shadow_projection, is_orthogonal, vaspect, jitter, taa_frame_count, camera->visible_layers);
+		camera_data.set_camera(transform, main_projection, is_orthogonal, vaspect, jitter, taa_frame_count, camera->visible_layers);
+		camera_data.shadow_projection = shadow_projection;
 #ifndef XR_DISABLED
 	} else {
 		XRServer *xr_server = XRServer::get_singleton();
@@ -3406,7 +3408,7 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 		RSG::light_storage->set_directional_shadow_count(lights_with_shadow.size());
 
 		for (int i = 0; i < lights_with_shadow.size(); i++) {
-			_light_instance_setup_directional_shadow(i, lights_with_shadow[i], p_camera_data->main_transform, p_camera_data->main_projection, p_camera_data->is_orthogonal, p_camera_data->vaspect);
+			_light_instance_setup_directional_shadow(i, lights_with_shadow[i], p_camera_data->main_transform, p_camera_data->shadow_projection, p_camera_data->is_orthogonal, p_camera_data->vaspect);
 		}
 	}
 
