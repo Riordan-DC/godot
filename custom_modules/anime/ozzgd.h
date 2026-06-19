@@ -73,7 +73,6 @@ public:
 
     // Constructor, default initialization.
     OzzAnimationState() : weight(1.f), joint_weight_setting(1.f) {
-
     }
 
     // Playback animation controller. This is a utility class that helps with
@@ -105,8 +104,32 @@ public:
     // Event tracks are inside the godot animation
     Ref<Animation> godot_animation;
 
+    void set_joint_weights(PackedFloat32Array weights) {
+        int num_soa_joints = joint_weights.size();
+        int num_weights = weights.size();
+
+        for (int i = 0; i < num_soa_joints; i++) {
+            int offset = i * 4;
+            float x,y,z,w = 0.f;
+            if (offset < num_weights)
+                x = weights[offset];
+            if ((offset+1) < num_weights)
+                y = weights[offset+1];
+            if ((offset+2) < num_weights)
+                z = weights[offset+2];
+            if ((offset+3) < num_weights)
+                w = weights[offset+3];
+            joint_weights[i] = ozz::math::simd_float4::Load(x,y,z,w);
+        }
+    }
+
+    void set_weight(float w) { weight = w;}
+    float get_weight() { return weight; }
+
     static void _bind_methods()
     {
+        
+        ClassDB::bind_method(D_METHOD("set_joint_weights", "weights"), &OzzAnimationState::set_joint_weights, DEFVAL(PackedFloat32Array()));
         // ClassDB::bind_method(D_METHOD("init", "animation", "anime"), &AnimationState::init, DEFVAL(nullptr));
 
         // ClassDB::bind_method(D_METHOD("find_thash_from_bone", "bone_idx"), &AnimationState::find_thash_from_bone);
@@ -116,15 +139,15 @@ public:
         // ClassDB::bind_method(D_METHOD("copy"), &AnimationState::copy);
 
         // setgets
-        // ADD_SETTER(AnimationState, set_animation, animation, nullptr)
-        // ADD_GETTER(AnimationState, get_animation)
+        ADD_SETTER(OzzAnimationState, set_weight, weight, 1.0)
+        ADD_GETTER(OzzAnimationState, get_weight)
+        ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "weight"), "set_weight", "get_weight");
         /*
         ADD_SETTER(AnimationState, set_time, time, 0.0f)
         ADD_GETTER(AnimationState, get_time)
         ADD_SETTER(AnimationState, set_never_loop, loop, true)
         ADD_GETTER(AnimationState, get_never_loop)
         
-        //ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "animation"), "set_animation", "get_animation");
         ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "time"), "set_time", "get_time");
         ADD_PROPERTY(PropertyInfo(Variant::BOOL, "never_loop"), "set_never_loop", "get_never_loop");
         */
@@ -310,6 +333,32 @@ public:
         ozz::animation::BlendingJob blend_job;
         blend_job.threshold = threshold;
         blend_job.layers = layers;
+        blend_job.rest_pose = skeleton->joint_rest_poses();
+        blend_job.output = make_span(state->locals);
+
+        // Blends.
+        if (!blend_job.Run()) {
+            return;
+        }
+    }
+
+    void add_animation(Ref<OzzAnimationState> state, Ref<OzzAnimationState> blend_state, float blend_amount) {
+        ozz::animation::BlendingJob::Layer layers[2];
+
+        layers[0].transform = make_span(state->locals);
+        layers[0].weight = state->weight;
+        // Set per-joint weights for the partially blended layer.
+        layers[0].joint_weights = make_span(state->joint_weights);
+
+        layers[1].transform = make_span(blend_state->locals);
+        layers[1].weight = blend_state->weight;
+        // Set per-joint weights for the partially blended layer.
+        layers[1].joint_weights = make_span(blend_state->joint_weights);
+
+        // Setups blending job.
+        ozz::animation::BlendingJob blend_job;
+        blend_job.threshold = threshold;
+        blend_job.additive_layers = layers;
         blend_job.rest_pose = skeleton->joint_rest_poses();
         blend_job.output = make_span(state->locals);
 
