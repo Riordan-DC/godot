@@ -29,6 +29,7 @@ void initialize_anime_module(ModuleInitializationLevel p_level) {
 
 	ClassDB::register_class<OzzGD>();
 	ClassDB::register_class<OzzAnimationState>();
+	//ClassDB::register_class<OzzAnimationLibrary>();
 
     // GDREGISTER_CLASS(BlastActor);
 	// GDREGISTER_CLASS(BlastGroup);

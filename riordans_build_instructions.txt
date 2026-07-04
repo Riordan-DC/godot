@@ -2,7 +2,7 @@ https://docs.godotengine.org/en/stable/contributing/development/compiling/compil
 
 editor
 ------
-scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules profile=custom.py debug_symbols=yes
+scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules profile=custom.py debug_symbols=yes winrt=no
 
 templates
 ---------
