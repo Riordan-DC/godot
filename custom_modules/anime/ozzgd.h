@@ -310,7 +310,7 @@ public:
 		return true;
 	}
 
-	Ref<OzzAnimationState> new_state(Skeleton3D* godot_skeleton, String animation_name) {
+	Ref<OzzAnimationState> new_state(String animation_name) {
 		if (skeleton.get() == nullptr) {
 			ERR_PRINT("Ozz skeleton is null. Cannot create new animation state.");
 			return nullptr;
@@ -327,7 +327,7 @@ public:
 		}
 
 		Ref<OzzAnimationState> as = Ref<OzzAnimationState>(memnew(OzzAnimationState));
-		as->animation = load_animation(godot_skeleton, animation);
+		as->animation = load_animation(animation);
 
 		// Allocates sampler runtime buffers.
 		as->locals.resize(num_soa_joints);
@@ -557,11 +557,16 @@ public:
 		ERR_FAIL_NULL_MSG(skeleton.get(), "Skeleton failed to build");
 	}
 
-	ozz::unique_ptr<ozz::animation::Animation> load_animation(Skeleton3D* godot_skeleton, Ref<Animation> animation) {
-		if (godot_skeleton == nullptr) {
-			ERR_PRINT("Godot skeleton is null! Cannot load animation!");
-			return nullptr;
+	int find_bone(String bone_name) {
+		for (int i = 0; i < names.size(); i++) {
+			if (names[i] == bone_name) {
+				return i;
+			}
 		}
+		return -1;
+	}
+
+	ozz::unique_ptr<ozz::animation::Animation> load_animation(Ref<Animation> animation) {
 		// Use the Ozz animation builder to create an ozz animation.
 		ozz::animation::offline::RawAnimation raw_animation;
 		// All the animation keyframes times must be within range [0, duration].
@@ -587,7 +592,7 @@ public:
 				Animation::TrackType type = animation->track_get_type(i);
 				NodePath path = animation->track_get_path(i);
 				String bone_name = path.get_concatenated_subnames();
-				int ozz_track = godot_skeleton->find_bone(bone_name); // bone idx
+				int ozz_track = find_bone(bone_name); // bone idx
 				if (ozz_track < 0) {
 					continue;
 				}
@@ -702,7 +707,7 @@ public:
 
 		ClassDB::bind_method(D_METHOD("init"), &OzzGD::init);
 		ClassDB::bind_method(D_METHOD("play_animation", "state", "delta", "update_state"), &OzzGD::play_animation);
-		ClassDB::bind_method(D_METHOD("new_state", "skeleton", "animation_name"), &OzzGD::new_state);
+		ClassDB::bind_method(D_METHOD("new_state", "animation_name"), &OzzGD::new_state);
 		ClassDB::bind_method(D_METHOD("blend_animation", "state", "blend_state", "blend_amount"), &OzzGD::blend_animation);
 		//ClassDB::bind_method(D_METHOD("load_animation", "skeleton", "animation"), &OzzGD::load_animation);
 		ClassDB::bind_method(D_METHOD("load_skeleton"), &OzzGD::load_skeleton);
