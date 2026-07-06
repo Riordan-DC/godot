@@ -13,7 +13,12 @@ scons platform=windows target=template_release arch=x86_64 -j10 profile=app.py
 
 VS Project
 ----------
-scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules vsproj=yes debug_symbols=true
+scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules vsproj=yes debug_symbols=true winrt=no
+
+--path "C:/Users/Riordan/Documents/Games/imsim/project" res://scenes/demo.tscn
+
+
+
 
 I NEED A FEATURE FROM A PR!!! 
 Do this to cherry-pick the feature for our version.

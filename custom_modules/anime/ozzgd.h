@@ -30,6 +30,10 @@ PITFALLS:
 #include "ozz/base/maths/vec_float.h"
 #include "ozz/options/options.h"
 #include "ozz/samples/utils.h"
+#include "ozz/animation/offline/tools/gltf2ozz.h"
+#include "ozz/base/io/archive.h"
+#include "ozz/base/io/stream.h"
+#include "ozz/base/memory/unique_ptr.h"
 
 // We don't need windows.h in this plugin but many others do and it throws up on itself all the time
 // So best to include it and make sure CI warns us when we use something Microsoft took for their own goals....
@@ -39,6 +43,7 @@ PITFALLS:
 
 #define ADD_GETTER(class, name) ClassDB::bind_method(D_METHOD(#name), &class ::name);
 #define ADD_SETTER(class, name, arg, defval) ClassDB::bind_method(D_METHOD(#name, #arg), &class ::name, DEFVAL(defval));
+
 
 #include "core/object/class_db.h"
 #include "core/object/ref_counted.h"
@@ -566,6 +571,44 @@ public:
 		return -1;
 	}
 
+	// TODO: Add error logs and error checks
+	PackedByteArray convert_animation_to_ozz(Ref<Animation> animation) {
+		PackedByteArray data;
+		ozz::io::MemoryStream buf;
+		ozz::io::OArchive output(&buf);
+
+		ozz::unique_ptr<ozz::animation::Animation> ozz_animation = load_animation(animation);
+		if (ozz_animation.get() == nullptr) {
+			return data;
+		}
+
+		output << *ozz_animation.get();
+
+		buf.Seek(0, ozz::io::MemoryStream::kSet);
+		for (int i = 0; i < buf.Size(); i++) {
+			unsigned char byte;
+			buf.Read((void*)&byte, 1);
+			data.push_back(byte);
+		}
+
+		// Test loading
+
+		ozz::io::MemoryStream inbuf;
+		inbuf.Write((void*)data.ptr(), data.size()); // IMPORTANT: You must write to the buffer before assigning to the archive
+		inbuf.Seek(0, ozz::io::MemoryStream::kSet);
+		ozz::io::IArchive input(&inbuf); // Initialising the archive reads the first byte from the buffer! The endianess!
+
+		if (!input.TestTag<ozz::animation::Animation>()) {
+			return PackedByteArray();
+		}
+
+		ozz::animation::Animation test_animation;
+		input >> test_animation;
+
+		return data;
+	}
+
+
 	ozz::unique_ptr<ozz::animation::Animation> load_animation(Ref<Animation> animation) {
 		// Use the Ozz animation builder to create an ozz animation.
 		ozz::animation::offline::RawAnimation raw_animation;
@@ -711,6 +754,7 @@ public:
 		ClassDB::bind_method(D_METHOD("blend_animation", "state", "blend_state", "blend_amount"), &OzzGD::blend_animation);
 		//ClassDB::bind_method(D_METHOD("load_animation", "skeleton", "animation"), &OzzGD::load_animation);
 		ClassDB::bind_method(D_METHOD("load_skeleton"), &OzzGD::load_skeleton);
+		ClassDB::bind_method(D_METHOD("convert_animation_to_ozz", "animation"), &OzzGD::convert_animation_to_ozz);
 		ClassDB::bind_method(D_METHOD("apply_animation_state", "state"), &OzzGD::apply_animation_state);
 	}
 };
