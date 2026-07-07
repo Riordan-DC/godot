@@ -15,7 +15,7 @@ VS Project
 ----------
 scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules vsproj=yes debug_symbols=true winrt=no
 
---path "C:/Users/Riordan/Documents/Games/imsim/project" res://scenes/demo.tscn
+-e --path "C:/Users/Riordan/Documents/Games/imsim/project" res://scenes/demo.tscn
 
 
 
