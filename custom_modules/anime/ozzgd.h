@@ -124,6 +124,19 @@ public:
 	// Event tracks
 	ozz::vector<ozz::unique_ptr<ozz::animation::FloatTrack>> events;
 
+	// Outputs
+	PackedVector3Array positions;
+	PackedVector4Array rotations;
+	PackedVector3Array scales;
+
+	void set_positions(PackedVector3Array p_positions) { positions = p_positions; }
+	PackedVector3Array get_positions() { return positions; }
+	void set_rotations(PackedVector4Array p_rotations) { rotations = p_rotations; }
+	PackedVector4Array get_rotations() { return rotations; }
+	void set_scales(PackedVector3Array p_scales) { scales = p_scales; }
+	PackedVector3Array get_scales() { return scales; }
+
+
 	void set_joint_weights(PackedFloat32Array weights) {
 		int num_soa_joints = joint_weights.size();
 		int num_weights = weights.size();
@@ -188,6 +201,27 @@ public:
 		ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "time"), "set_time", "get_time");
 		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "never_loop"), "set_never_loop", "get_never_loop");
 		*/
+
+
+		ADD_SETTER(OzzAnimationState, set_positions, p_positions, PackedVector3Array())
+		ADD_GETTER(OzzAnimationState, get_positions)
+		ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "positions"), "set_positions", "get_positions");
+		ADD_SETTER(OzzAnimationState, set_rotations, p_rotations, PackedVector4Array())
+		ADD_GETTER(OzzAnimationState, get_rotations)
+		ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR4_ARRAY, "rotations"), "set_rotations", "get_rotations");
+		ADD_SETTER(OzzAnimationState, set_scales, p_scales, PackedVector3Array())
+		ADD_GETTER(OzzAnimationState, get_scales)
+		ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "scales"), "set_scales", "get_scales");
+		/*
+        ClassDB::add_property(
+            "ActorSkeleton2", 
+            PropertyInfo(Variant::PACKED_INT32_ARRAY, "positions", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), 
+            "set_positions", 
+            "get_positions"
+        );
+		*/
+
+
 	}
 };
 
@@ -320,35 +354,33 @@ public:
 	}
 	*/
 
-	Array apply_animation_state(OzzAnimationState *state) {
-		Array poses;
-
+	void apply_animation_state(OzzAnimationState *state) {
 		// Converts from local space to model space matrices.
 		ozz::animation::LocalToModelJob ltm_job;
 		ltm_job.skeleton = skeleton.get();
 		ltm_job.input = make_span(state->locals);
 		ltm_job.output = make_span(state->models);
 		if (!ltm_job.Run()) {
-			return poses;
+			return;
 		}
 
-		poses.resize(skeleton->num_joints());
-		poses.fill(Transform3D());
-		for (int i = 0; i < state->models.size(); i++) {
-			const ozz::math::Float4x4 &matrix = state->models[i];
-			ozz::math::Float3 x_axis;
-			ozz::math::Float3 y_axis;
-			ozz::math::Float3 z_axis;
-			ozz::math::Float3 position;
-			ozz::math::Store3PtrU(matrix.cols[0], &x_axis.x);
-			ozz::math::Store3PtrU(matrix.cols[1], &y_axis.x);
-			ozz::math::Store3PtrU(matrix.cols[2], &z_axis.x);
-			ozz::math::Store3PtrU(matrix.cols[3], &position.x);
-			Basis basis = Basis(Vector3(x_axis.x, x_axis.y, x_axis.z), Vector3(y_axis.x, y_axis.y, y_axis.z), Vector3(z_axis.x, z_axis.y, z_axis.z));
-			Transform3D pose = Transform3D(basis, Vector3(position.x, position.y, position.z));
-			poses[i] = pose;
+		if (state->positions.size() != state->models.size()) {
+			state->positions.resize(state->models.size());
+			state->rotations.resize(state->models.size());
+			state->scales.resize(state->models.size());
 		}
-		return poses;
+		
+		for (int i = 0; i < state->models.size(); i++) {
+			ozz::math::Float4x4 matrix = state->models[i];
+			ozz::math::Float3 translation;
+			ozz::math::Quaternion quaternion;
+			ozz::math::Float3 scale;
+			if (ozz::math::ToAffine(matrix, &translation, &quaternion, &scale)) {
+				state->positions.set(i, Vector3(translation.x, translation.y, translation.z));
+				state->rotations.set(i, Vector4(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+				state->scales.set(i, Vector3(scale.x, scale.y, scale.z));
+			}
+		}
 	}
 
 	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false) {
