@@ -59,12 +59,18 @@ PITFALLS:
 #include "core/templates/a_hash_map.h"
 #include "scene/3d/skeleton_3d.h"
 #include "scene/resources/animation.h"
+#include "servers/rendering/rendering_server.h"
+#include "core/typedefs.h"
 
 #include <stdalign.h>
 
 #include <cmath>
 #include <unordered_map>
 #include <vector>
+
+class OzzAnimationState;
+class SkeletonState;
+class OzzGD;
 
 // Helper functor used to set weights while traversing joints hierarchy.
 struct WeightSetupIterator {
@@ -125,17 +131,9 @@ public:
 	ozz::vector<ozz::unique_ptr<ozz::animation::FloatTrack>> events;
 
 	// Outputs
-	PackedVector3Array positions;
-	PackedVector4Array rotations;
-	PackedVector3Array scales;
-
-	void set_positions(PackedVector3Array p_positions) { positions = p_positions; }
-	PackedVector3Array get_positions() { return positions; }
-	void set_rotations(PackedVector4Array p_rotations) { rotations = p_rotations; }
-	PackedVector4Array get_rotations() { return rotations; }
-	void set_scales(PackedVector3Array p_scales) { scales = p_scales; }
-	PackedVector3Array get_scales() { return scales; }
-
+	std::vector<Vector3> positions;
+	std::vector<Vector4> rotations;
+	std::vector<Vector3> scales;
 
 	void set_joint_weights(PackedFloat32Array weights) {
 		int num_soa_joints = joint_weights.size();
@@ -202,16 +200,17 @@ public:
 		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "never_loop"), "set_never_loop", "get_never_loop");
 		*/
 
-
-		ADD_SETTER(OzzAnimationState, set_positions, p_positions, PackedVector3Array())
+	/*
 		ADD_GETTER(OzzAnimationState, get_positions)
+		ADD_GETTER(OzzAnimationState, get_rotations)
+		ADD_GETTER(OzzAnimationState, get_scales)
+		ADD_SETTER(OzzAnimationState, set_positions, p_positions, PackedVector3Array())
 		ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "positions"), "set_positions", "get_positions");
 		ADD_SETTER(OzzAnimationState, set_rotations, p_rotations, PackedVector4Array())
-		ADD_GETTER(OzzAnimationState, get_rotations)
 		ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR4_ARRAY, "rotations"), "set_rotations", "get_rotations");
 		ADD_SETTER(OzzAnimationState, set_scales, p_scales, PackedVector3Array())
-		ADD_GETTER(OzzAnimationState, get_scales)
 		ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "scales"), "set_scales", "get_scales");
+		*/
 		/*
         ClassDB::add_property(
             "ActorSkeleton2", 
@@ -224,6 +223,192 @@ public:
 
 	}
 };
+
+
+class SkeletonState : public RefCounted {
+    GDCLASS(SkeletonState, RefCounted);
+
+    float dt = 0.f;
+    float tick_time = 1.f/30.f;
+
+    std::vector<Vector3> position;
+    std::vector<Vector4> rotation;
+    std::vector<Vector3> scale;
+
+    std::vector<Vector3> position_lerped;
+    std::vector<Vector4> rotation_lerped;
+    std::vector<Vector3> scale_lerped;
+
+    std::vector<Vector3> position_from;
+    std::vector<Vector4> rotation_from;
+    std::vector<Vector3> scale_from;
+
+    std::vector<Transform3D> bind_poses;
+    HashMap<int, int> bind_map;
+	PackedInt32Array bind_to_bone;
+
+    int bones = 0;
+
+public:
+    SkeletonState() {}
+    ~SkeletonState() {}
+
+protected:
+    static void _bind_methods() {
+        ClassDB::bind_method(D_METHOD("get_tick_time"), &SkeletonState::get_tick_time);
+        ClassDB::bind_method(D_METHOD("set_tick_time", "p_tick_time"), &SkeletonState::set_tick_time);
+
+        ClassDB::add_property(
+            "SkeletonState", 
+            PropertyInfo(Variant::FLOAT, "tick_time", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), 
+            "set_tick_time", 
+            "get_tick_time"
+        );
+        
+        ClassDB::bind_method(D_METHOD("setup"), &SkeletonState::setup);
+        ClassDB::bind_method(D_METHOD("update"), &SkeletonState::update);
+        ClassDB::bind_method(D_METHOD("update_skeleton"), &SkeletonState::update_skeleton);
+		ClassDB::bind_method(D_METHOD("update_skeleton_interpolated"), &SkeletonState::update_skeleton_interpolated);
+    }
+
+    void setup(int p_bones, float p_tick_time, TypedArray<Transform3D> binds, PackedInt32Array p_bind_map) {
+        bones = p_bones;
+        position.resize(bones);
+        position_from.resize(bones);
+        position_lerped.resize(bones);
+        rotation.resize(bones);
+        rotation_from.resize(bones);
+        rotation_lerped.resize(bones);
+        std::fill(rotation.begin(), rotation.end(), Vector4(0,0,0,1));
+        std::fill(rotation_from.begin(), rotation_from.end(), Vector4(0,0,0,1));
+        std::fill(rotation_lerped.begin(), rotation_lerped.end(), Vector4(0,0,0,1));
+        scale.resize(bones);
+        scale_from.resize(bones);
+        scale_lerped.resize(bones);
+		bind_poses.resize(binds.size());
+		for (int i = 0; i < binds.size(); i++) {
+			bind_poses[i] = binds[i];
+		}
+		// bones are from the animation
+		// binds are bones in the mesh
+		// an animation might animate 45 bones
+		// a mesh may only bind to 30 of them
+		// this maps from bones -> bind, and if a bind doesnt exist, its 0.
+		bind_to_bone = p_bind_map;
+        for (int i = 0; i < bones; i++) {
+			if (i < p_bind_map.size()) {
+				bind_map[i] = p_bind_map[i];
+			} else {
+				bind_map[i] = -1;
+			}
+		}
+    }
+
+    float get_tick_time() { return tick_time; }
+    void set_tick_time(float p_tick_time) { tick_time = p_tick_time; }
+
+    // Update uses an animation state and its values
+    void update(OzzAnimationState* state) {
+        dt = 0.f;
+        memcpy(position_from.data(), position.data(), bones * sizeof(Vector3));
+        memcpy(rotation_from.data(), rotation.data(), bones * sizeof(Vector4));
+        memcpy(scale_from.data(), scale.data(), bones * sizeof(Vector3));
+        memcpy(position.data(), state->positions.data(), bones * sizeof(Vector3));
+        memcpy(rotation.data(), state->rotations.data(), bones * sizeof(Vector4));
+        memcpy(scale.data(), state->scales.data(), bones * sizeof(Vector3));
+    }
+
+    void update_skeleton_interpolated(float delta, RID skeleton_rid, RID visibility_notifier_rid) {
+		AABB aabb = AABB();
+        dt += delta;
+        float tick_factor = CLAMP(dt / tick_time, 0.0, 1.0);
+
+        for (int i = 0; i < bones; i++) {
+            position_lerped[i] = position_from[i].lerp(position[i], tick_factor);
+            direct_slerp(rotation_from[i], rotation[i], tick_factor, rotation_lerped[i]);
+            scale_lerped[i] = scale_from[i].lerp(scale[i], tick_factor);
+        	// Only update the bones that are bound
+			if (bind_map[i] != -1) {
+				int bind = bind_map[i];
+				Transform3D pose;
+				set_transform_fast(position_lerped[i], rotation_lerped[i], scale_lerped[i], pose);
+				aabb = aabb.expand(position_lerped[i]);
+				RenderingServer::get_singleton()->skeleton_bone_set_transform(skeleton_rid, bind, pose * bind_poses[i]);
+			}
+        }
+        RenderingServer::get_singleton()->visibility_notifier_set_aabb(visibility_notifier_rid, aabb);
+    }
+
+    void update_skeleton(RID skeleton_rid, RID visibility_notifier_rid) {
+		AABB aabb = AABB();
+		int binds = bind_to_bone.size();
+        for (int i = 0; i < binds; i++) {
+        	// Only update the bones that are bound
+			int bone = bind_to_bone[i];
+			Transform3D pose;
+			set_transform_fast(position[bone], rotation[bone], scale[bone], pose);
+			aabb = aabb.expand(position[bone]);
+			RenderingServer::get_singleton()->skeleton_bone_set_transform(skeleton_rid, i, pose * bind_poses[bone]);
+        }
+        RenderingServer::get_singleton()->visibility_notifier_set_aabb(visibility_notifier_rid, aabb);
+    }
+
+    inline void set_transform_fast(const Vector3& p, const Vector4& q, const Vector3& s, Transform3D& transform) {
+        real_t d = q.dot(q);
+        real_t s2 = 2.0f / d;
+        real_t xs = q.x * s2, ys = q.y * s2, zs = q.z * s2;
+        real_t wx = q.w * xs, wy = q.w * ys, wz = q.w * zs;
+        real_t xx = q.x * xs, xy = q.x * ys, xz = q.x * zs;
+        real_t yy = q.y * ys, yz = q.y * zs, zz = q.z * zs;
+
+        transform.set(
+            1.0f - (yy + zz) * s.x, xy - wz * s.x, xz + wy * s.x,
+            xy + wz * s.y, 1.0f - (xx + zz) * s.y, yz - wx * s.y,
+            xz - wy * s.z, yz + wx * s.z, 1.0f - (xx + yy) * s.z,
+            p.x, p.y, p.z
+        );
+
+    }
+
+    inline void direct_slerp(Vector4& from, Vector4& to, float weight, Vector4& out) {
+        Vector4 to1;
+        real_t omega, cosom, sinom, scale0, scale1;
+
+        // calc cosine
+        cosom = from.dot(to);
+
+        // adjust signs (if necessary)
+        if (cosom < 0.0f) {
+            cosom = -cosom;
+            to1 = -to;
+        } else {
+            to1 = to;
+        }
+
+        // calculate coefficients
+
+        if ((1.0f - cosom) > (real_t)CMP_EPSILON) {
+            // standard case (slerp)
+            omega = Math::acos(cosom);
+            sinom = Math::sin(omega);
+            scale0 = Math::sin((1.0 - weight) * omega) / sinom;
+            scale1 = Math::sin(weight * omega) / sinom;
+        } else {
+            // "from" and "to" quaternions are very close
+            //  ... so we can do a linear interpolation
+            scale0 = 1.0f - weight;
+            scale1 = weight;
+        }
+        // calculate final values
+        out.x = scale0 * from.x + scale1 * to1.x,
+        out.y = scale0 * from.y + scale1 * to1.y,
+        out.z = scale0 * from.z + scale1 * to1.z,
+        out.w = scale0 * from.w + scale1 * to1.w;
+    }
+
+
+};
+
 
 class OzzGD : public RefCounted {
 	GDCLASS(OzzGD, RefCounted);
@@ -376,9 +561,9 @@ public:
 			ozz::math::Quaternion quaternion;
 			ozz::math::Float3 scale;
 			if (ozz::math::ToAffine(matrix, &translation, &quaternion, &scale)) {
-				state->positions.set(i, Vector3(translation.x, translation.y, translation.z));
-				state->rotations.set(i, Vector4(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
-				state->scales.set(i, Vector3(scale.x, scale.y, scale.z));
+				state->positions[i] = Vector3(translation.x, translation.y, translation.z);
+				state->rotations[i] = Vector4(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+				state->scales[i] = Vector3(scale.x, scale.y, scale.z);
 			}
 		}
 	}
