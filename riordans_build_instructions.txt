@@ -3,13 +3,14 @@ https://docs.godotengine.org/en/stable/contributing/development/compiling/compil
 editor
 ------
 scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modules profile=custom.py debug_symbols=yes winrt=no
+scons platform=macos tools=yes target=editor -j10 custom_modules=./custom_modules profile=custom.py debug_symbols=yes winrt=no
 
 templates
 ---------
-scons platform=windows target=template_debug arch=x86_64 custom_modules=./custom_modules -j10 profile=custom.py
+scons platform=windows target=template_debug arch=x86_64 custom_modules=./custom_modules -j10 profile=custom.py winrt=no
 scons platform=web target=template_debug arch=wasm32 custom_modules=./custom_modules -j10 profile=custom.py
 
-scons platform=windows target=template_release arch=x86_64 -j10 profile=app.py
+scons platform=windows target=template_release arch=x86_64 -j10 profile=app.py winrt=no
 
 VS Project
 ----------
