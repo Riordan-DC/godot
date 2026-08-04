@@ -314,23 +314,28 @@ class OzzGD : public RefCounted {
 public:
 	// Runtime skeleton.
 	ozz::unique_ptr<ozz::animation::Skeleton> skeleton;
-	float time = 0.0;
+	float time = 0.0f;
 	float threshold = ozz::animation::BlendingJob().threshold;
 
 	PackedStringArray names;
-
 	PackedStringArray get_names() { return names; }
 	void set_names(PackedStringArray n) { names = n; }
 
-	Array rests;
+	TypedArray<Transform3D> rests;
+	TypedArray<Transform3D> get_rests() { return rests; }
+	void set_rests(TypedArray<Transform3D> r) { rests = r; }
 
-	Array get_rests() { return rests; }
-	void set_rests(Array r) { rests = r; }
+	TypedArray<PackedInt32Array> children;
+	TypedArray<PackedInt32Array> get_children() { return children; }
+	void set_children(TypedArray<PackedInt32Array> c) { children = c; }
 
-	Array children;
+    PackedInt32Array parents;
+	PackedInt32Array get_parents() { return parents; }
+	void set_parents(PackedInt32Array p) { parents = p; }
 
-	Array get_children() { return children; }
-	void set_children(Array c) { children = c; }
+	// unused 
+    int bones = 0;
+    TypedArray<Transform3D> global_rests;
 
 	OzzGD() {
 	}
@@ -876,18 +881,68 @@ public:
         RenderingServer::get_singleton()->visibility_notifier_set_aabb(visibility_notifier_rid, aabb);
     }
 
+	Array get_parentless_bones() {
+		Array bones;
+		for (int i = 0; i < parents.size(); i++) {
+			if (parents[i] == -1) {
+				bones.append(i);
+			}
+		}
+		return bones;
+	}
+
+    // The point of the skin is to map bones to weight indices
+    // Here we create the inverse bind matrix
+    // In the skin shader we use the inverse bind matrix to compute local bone pose
+    TypedArray<Transform3D> build_skin() {
+        TypedArray<Transform3D> bind_poses;
+        bind_poses.resize(bones);
+        Array bones_to_process = get_parentless_bones();
+
+        while (bones_to_process.size() > 0) {
+            int current_bone_idx = bones_to_process.pop_front();
+            Array child_bones = Array(children[current_bone_idx]);
+            int parent = parents[current_bone_idx];
+            if (parent < 0) {
+                bind_poses[current_bone_idx] = rests[current_bone_idx];
+            }
+            
+            for (int i = 0; i < child_bones.size(); i++) {
+                int child_bone_idx = child_bones[i];
+                Transform3D bind = bind_poses[current_bone_idx];
+                Transform3D rest = rests[child_bone_idx];
+                bind_poses[child_bone_idx] = bind * rest;
+            }
+            bones_to_process.append_array(child_bones);
+        }
+        
+        for (int i = 0; i < bind_poses.size(); i++) {
+            Transform3D pose = bind_poses[i];
+            bind_poses[i] = pose.affine_inverse();
+        }
+        
+        return bind_poses;
+    }
+
 	static void _bind_methods() {
 		ADD_SETTER(OzzGD, set_names, names, PackedStringArray());
 		ADD_GETTER(OzzGD, get_names);
 		ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "names"), "set_names", "get_names");
 
+		ADD_SETTER(OzzGD, set_parents, parents, PackedInt32Array());
+		ADD_GETTER(OzzGD, get_parents);
+		ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "parents"), "set_parents", "get_parents");
+
 		ADD_SETTER(OzzGD, set_rests, rests, Array());
 		ADD_GETTER(OzzGD, get_rests);
-		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "rests"), "set_rests", "get_rests");
+		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "rests", PROPERTY_HINT_TYPE_STRING, 
+			String::num(Variant::TRANSFORM3D) + "/", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY),
+			"set_rests", "get_rests");
 
 		ADD_SETTER(OzzGD, set_children, children, Array());
 		ADD_GETTER(OzzGD, get_children);
-		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "children"), "set_children", "get_children");
+		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "children", PROPERTY_HINT_TYPE_STRING, 
+			String::num(Variant::PACKED_INT32_ARRAY) + "/", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY), "set_children", "get_children");
 
 		ClassDB::bind_method(D_METHOD("init"), &OzzGD::init);
 		ClassDB::bind_method(D_METHOD("play_animation", "state", "delta", "update_state", "sample_motion"), &OzzGD::play_animation);

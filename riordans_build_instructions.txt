@@ -19,7 +19,7 @@ scons platform=windows tools=yes target=editor -j10 custom_modules=./custom_modu
 -e --path "C:/Users/Riordan/Documents/Games/imsim/project" res://scenes/demo.tscn
 
 
-
+./godot --dump-extension-api
 
 I NEED A FEATURE FROM A PR!!! 
 Do this to cherry-pick the feature for our version.
