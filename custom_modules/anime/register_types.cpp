@@ -1,7 +1,9 @@
 #include "register_types.h"
 
 #include "core/object/class_db.h"
+
 #include "ozzgd.h"
+#include "anime.h"
 
 
 void initialize_anime_module(ModuleInitializationLevel p_level) {
@@ -10,6 +12,12 @@ void initialize_anime_module(ModuleInitializationLevel p_level) {
 	}
 
     // Register Godot C++ classes here
+    ClassDB::register_class<Anime>();
+    ClassDB::register_class<TrackCache>();
+    ClassDB::register_class<AnimationState>();
+    ClassDB::register_class<BlendSpace2D>();
+
+
 	ClassDB::register_class<OzzGD>();
 	ClassDB::register_class<OzzAnimationState>();
 	ClassDB::register_class<SkeletonState>();
