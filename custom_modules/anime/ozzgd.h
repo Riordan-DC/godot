@@ -62,6 +62,7 @@ PITFALLS:
 #include "scene/3d/skeleton_3d.h"
 #include "scene/resources/animation.h"
 #include "servers/rendering/rendering_server.h"
+#include "servers/physics_3d/physics_server_3d.h"
 #include "core/typedefs.h"
 
 #include <stdalign.h>
@@ -241,7 +242,7 @@ public:
 
     TypedArray<Transform3D> bind_poses;
 	TypedArray<Transform3D> get_bind_poses() { return bind_poses; }
-    void set_bind_poses(TypedArray<Transform3D> p_bind_poses) { bind_poses = bind_poses; }
+    void set_bind_poses(TypedArray<Transform3D> p_bind_poses) { bind_poses = p_bind_poses; }
 
 	PackedInt32Array binds;
 	PackedInt32Array get_binds() { return binds; }
@@ -271,10 +272,10 @@ public:
 		to_locals.resize(skeleton->num_soa_joints());
 		interpolated_locals.resize(skeleton->num_soa_joints());
 		models.resize(skeleton->num_joints());
+		std::fill(models.begin(), models.end(), ozz::math::Float4x4::identity());
 
 		return true;
 	}
-
 
 	void update_hitboxes(Transform3D global_transform, Dictionary hitboxes) {
 		// Updates the hitbox transforms
@@ -289,6 +290,7 @@ public:
 			}
 		}
 	}
+
 
 	Ref<OzzAnimationState> new_state_bin(PackedByteArray data) {
 		if (skeleton.get() == nullptr) {
@@ -830,9 +832,32 @@ public:
         RenderingServer::get_singleton()->visibility_notifier_set_aabb(visibility_notifier_rid, aabb);
     }
 
-	void update_skeleton_ragdoll() {
-		// Updates the skeleton but uses the poses of the hitboxes in SkeletonState
+	void update_skeleton_ragdoll(Transform3D global_transform, HashMap<int, RID> bodies) {
+		// Updates the skeleton but uses the poses of the hitboxes
+		Transform3D global_transform_inv = global_transform.inverse();
+		TypedArray<int> q;
+		q.append(0);
 
+		Dictionary poses;
+
+		while (q.size() > 0) {
+			int bone = q.pop_front();
+			Transform3D bone_pose = poses[bone];
+			if (bodies.has(bone)) {
+				RID body_rid = static_cast<RID>(bodies[bone]);
+				Transform3D body_transform = PhysicsServer3D::get_singleton()->body_get_state(body_rid, PhysicsServer3D::BODY_STATE_TRANSFORM);
+				bone_pose = global_transform_inv * body_transform;
+				poses[bone] = bone_pose;
+			}
+			
+			Array bone_children = static_cast<Array>(children[bone]);
+			for (int i = 0; i < bone_children.size(); i++) {
+				if (!bodies.has(i)) {
+					poses[i] = bone_pose * static_cast<Transform3D>(rests[i]);
+				}
+			}
+			q.append_array(bone_children);
+		}
 	}
 
 	Array get_parentless_bones() {
@@ -925,7 +950,7 @@ public:
 
         ClassDB::add_property(
             "OzzGD", 
-            PropertyInfo(Variant::FLOAT, "binds", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), 
+            PropertyInfo(Variant::PACKED_INT32_ARRAY, "binds", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), 
             "set_binds", 
             "get_binds"
         );
