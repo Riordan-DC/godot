@@ -39,3 +39,8 @@ ISSUES
 IT WONT OPEN!!!!
 1. Open in a terminal to see the errors. Very often it is because I build my godot with steamworks and therefore
 requires steams shared libs to be included with the binary
+
+
+TODO
+====
+Add hitbox updating inside the OzzGD or SkeletonState

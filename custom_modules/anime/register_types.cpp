@@ -20,7 +20,6 @@ void initialize_anime_module(ModuleInitializationLevel p_level) {
 
 	ClassDB::register_class<OzzGD>();
 	ClassDB::register_class<OzzAnimationState>();
-	ClassDB::register_class<SkeletonState>();
 
 	// framework = memnew(NvBlastFramework); // Creates the singleton globally
     // Engine::get_singleton()->register_singleton("BlastFramework", NvBlastFramework::get_singleton());

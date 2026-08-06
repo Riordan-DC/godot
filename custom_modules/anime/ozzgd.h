@@ -5,13 +5,15 @@
 PITFALLS:
 1. Ozz Animation fallback. If there is no keyframe for a track it will default to the identity. For example: Missing position track, ok, its ZEROs now. This sucks.
 	It should be the rest value.
-
+2. Godot arrays copy on write. This makes them slow in situations where they need to be edited inside a tight loop.
 */
 
 // TODO:
 // 1. OzzAnimation resource in Godot. Convert and save them so they can be quickly loaded by the engine? Convert/optimise at runtime slow?
-// 2. OzzAnimation seems to break the face (jaw, eyes), is this because there are no keyframes? If so, how can we stop it breaking? Use rest?
 // 3. Support Godot method tracks by just using the godot animation and only sampling the method tracks
+// 4. Inertia blending. Dont cross blend. Simply snap to next animation. When snap occurs trigger a temporary post processing
+// 	which blends the last pose into the current. 
+// 5. remove scale tracks if not needed for an animation
 
 #include "ozz/animation/offline/animation_builder.h"
 #include "ozz/animation/offline/motion_extractor.h"
@@ -69,8 +71,18 @@ PITFALLS:
 #include <vector>
 
 class OzzAnimationState;
-class SkeletonState;
 class OzzGD;
+
+// Helper to convert from Ozz Mat4x4 to godot transform3d
+inline Transform3D ozz_to_godot_xform(ozz::math::Float4x4 m) {
+	return Transform3D(
+		ozz::math::GetX(m.cols[0]), ozz::math::GetX(m.cols[1]), ozz::math::GetX(m.cols[2]),
+		ozz::math::GetY(m.cols[0]), ozz::math::GetY(m.cols[1]), ozz::math::GetY(m.cols[2]),
+		ozz::math::GetZ(m.cols[0]), ozz::math::GetZ(m.cols[1]), ozz::math::GetZ(m.cols[2]),
+		ozz::math::GetX(m.cols[3]), ozz::math::GetY(m.cols[3]), ozz::math::GetZ(m.cols[3])
+		
+	);
+}
 
 // Helper functor used to set weights while traversing joints hierarchy.
 struct WeightSetupIterator {
@@ -178,135 +190,12 @@ public:
 	static void _bind_methods() {
 		ClassDB::bind_method(D_METHOD("set_joint_weights", "weights"), &OzzAnimationState::set_joint_weights, DEFVAL(PackedFloat32Array()));
 		ClassDB::bind_method(D_METHOD("get_transform"), &OzzAnimationState::get_transform);
-		// ClassDB::bind_method(D_METHOD("init", "animation", "anime"), &AnimationState::init, DEFVAL(nullptr));
-
-		// ClassDB::bind_method(D_METHOD("find_thash_from_bone", "bone_idx"), &AnimationState::find_thash_from_bone);
-		// ClassDB::bind_method(D_METHOD("get_track_rotation", "thash"), &AnimationState::get_track_rotation);
-		// ClassDB::bind_method(D_METHOD("set_track_rotation", "thash", "rot"), &AnimationState::set_track_rotation);
-
-		// ClassDB::bind_method(D_METHOD("copy"), &AnimationState::copy);
-
 		// setgets
 		ADD_SETTER(OzzAnimationState, set_weight, weight, 1.0)
 		ADD_GETTER(OzzAnimationState, get_weight)
 		ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "weight"), "set_weight", "get_weight");
-		/*
-		ADD_SETTER(AnimationState, set_time, time, 0.0f)
-		ADD_GETTER(AnimationState, get_time)
-		ADD_SETTER(AnimationState, set_never_loop, loop, true)
-		ADD_GETTER(AnimationState, get_never_loop)
-
-		ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "time"), "set_time", "get_time");
-		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "never_loop"), "set_never_loop", "get_never_loop");
-		*/
-
-	/*
-		ADD_GETTER(OzzAnimationState, get_positions)
-		ADD_GETTER(OzzAnimationState, get_rotations)
-		ADD_GETTER(OzzAnimationState, get_scales)
-		ADD_SETTER(OzzAnimationState, set_positions, p_positions, PackedVector3Array())
-		ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "positions"), "set_positions", "get_positions");
-		ADD_SETTER(OzzAnimationState, set_rotations, p_rotations, PackedVector4Array())
-		ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR4_ARRAY, "rotations"), "set_rotations", "get_rotations");
-		ADD_SETTER(OzzAnimationState, set_scales, p_scales, PackedVector3Array())
-		ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "scales"), "set_scales", "get_scales");
-		*/
-		/*
-        ClassDB::add_property(
-            "ActorSkeleton2", 
-            PropertyInfo(Variant::PACKED_INT32_ARRAY, "positions", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), 
-            "set_positions", 
-            "get_positions"
-        );
-		*/
-
-
 	}
 };
-
-
-class SkeletonState : public RefCounted {
-    GDCLASS(SkeletonState, RefCounted);
-public:	
-    float dt = 0.f;
-    float tick_time = 1.f/30.f;
-
-	ozz::vector<ozz::math::SoaTransform> from_locals;
-	ozz::vector<ozz::math::SoaTransform> to_locals;
-	ozz::vector<ozz::math::SoaTransform> interpolated_locals;
-	ozz::vector<ozz::math::Float4x4> interpolated_models;
-
-    std::vector<Transform3D> bind_poses;
-    HashMap<int, int> bind_map;
-	PackedInt32Array bind_to_bone;
-
-    int bones = 0;
-    SkeletonState() {}
-    ~SkeletonState() {}
-
-    void setup(int p_bones, float p_tick_time, TypedArray<Transform3D> binds, PackedInt32Array p_bind_map) {
-        bones = p_bones;
-		bind_poses.resize(binds.size());
-		for (int i = 0; i < binds.size(); i++) {
-			bind_poses[i] = binds[i];
-		}
-		// bones are from the animation
-		// binds are bones in the mesh
-		// an animation might animate 45 bones
-		// a mesh may only bind to 30 of them
-		// this maps from bones -> bind, and if a bind doesnt exist, its 0.
-		bind_to_bone = p_bind_map;
-        for (int i = 0; i < bones; i++) {
-			if (i < p_bind_map.size()) {
-				bind_map[i] = p_bind_map[i];
-			} else {
-				bind_map[i] = -1;
-			}
-		}
-    }
-
-    float get_tick_time() { return tick_time; }
-    void set_tick_time(float p_tick_time) { tick_time = p_tick_time; }
-
-    // Update uses an animation state and its values
-    void update(OzzAnimationState* state) {
-        dt = 0.f;
-		/*
-        memcpy(position_from.data(), position.data(), bones * sizeof(Vector3));
-        memcpy(rotation_from.data(), rotation.data(), bones * sizeof(Vector4));
-        memcpy(scale_from.data(), scale.data(), bones * sizeof(Vector3));
-        memcpy(position.data(), state->positions.data(), bones * sizeof(Vector3));
-        memcpy(rotation.data(), state->rotations.data(), bones * sizeof(Vector4));
-        memcpy(scale.data(), state->scales.data(), bones * sizeof(Vector3));
-		*/
-		if (from_locals.size() != state->locals.size()) {
-			from_locals.resize(state->locals.size());
-			to_locals.resize(state->locals.size());
-			interpolated_locals.resize(state->locals.size());
-			interpolated_models.resize(state->models.size());
-			memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform)); // First call
-		}
-		memcpy(from_locals.data(), to_locals.data(), to_locals.size() * sizeof(ozz::math::SoaTransform));
-		memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
-
-    }
-protected:
-    static void _bind_methods() {
-        ClassDB::bind_method(D_METHOD("get_tick_time"), &SkeletonState::get_tick_time);
-        ClassDB::bind_method(D_METHOD("set_tick_time", "p_tick_time"), &SkeletonState::set_tick_time);
-
-        ClassDB::add_property(
-            "SkeletonState", 
-            PropertyInfo(Variant::FLOAT, "tick_time", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), 
-            "set_tick_time", 
-            "get_tick_time"
-        );
-        
-        ClassDB::bind_method(D_METHOD("setup"), &SkeletonState::setup);
-        ClassDB::bind_method(D_METHOD("update"), &SkeletonState::update);
-    }
-};
-
 
 class OzzGD : public RefCounted {
 	GDCLASS(OzzGD, RefCounted);
@@ -333,9 +222,31 @@ public:
 	PackedInt32Array get_parents() { return parents; }
 	void set_parents(PackedInt32Array p) { parents = p; }
 
-	// unused 
+	// SkeletonState
     int bones = 0;
-    TypedArray<Transform3D> global_rests;
+    //TypedArray<Transform3D> global_rests;
+
+	bool started = false;
+
+    float dt = 0.f;
+
+    float tick_time = 1.f/30.f;
+	float get_tick_time() { return tick_time; }
+    void set_tick_time(float p_tick_time) { tick_time = p_tick_time; }
+
+	ozz::vector<ozz::math::SoaTransform> from_locals;
+	ozz::vector<ozz::math::SoaTransform> to_locals;
+	ozz::vector<ozz::math::SoaTransform> interpolated_locals;
+	ozz::vector<ozz::math::Float4x4> models;
+
+    TypedArray<Transform3D> bind_poses;
+	TypedArray<Transform3D> get_bind_poses() { return bind_poses; }
+    void set_bind_poses(TypedArray<Transform3D> p_bind_poses) { bind_poses = bind_poses; }
+
+	PackedInt32Array binds;
+	PackedInt32Array get_binds() { return binds; }
+    void set_binds(PackedInt32Array p_binds) { binds = p_binds; }
+    //HashMap<int, int> bind_map;
 
 	OzzGD() {
 	}
@@ -346,7 +257,37 @@ public:
 			return false;
 		}
 
+		if (binds.is_empty()) {
+			ERR_PRINT("Bind indices is zero. Invalid configuration.");
+			return false;
+		};
+
+		if (bind_poses.is_empty()) {
+			ERR_PRINT("Bind poses is zero. Invalid configuration.");
+			return false;
+		};
+
+		from_locals.resize(skeleton->num_soa_joints());
+		to_locals.resize(skeleton->num_soa_joints());
+		interpolated_locals.resize(skeleton->num_soa_joints());
+		models.resize(skeleton->num_joints());
+
 		return true;
+	}
+
+
+	void update_hitboxes(Transform3D global_transform, Dictionary hitboxes) {
+		// Updates the hitbox transforms
+		for (int i = 0; i < hitboxes.size(); i++) {
+			int bond_id = static_cast<int>(hitboxes.get_key_at_index(i));
+			Object* hitbox = hitboxes[bond_id];
+			if (hitbox == nullptr) continue;
+
+			if (hitbox->has_method("set_body_transform")) {
+				Transform3D xform = global_transform * ozz_to_godot_xform(models[bond_id]);
+				hitbox->call("set_body_transform", xform);
+			}
+		}
 	}
 
 	Ref<OzzAnimationState> new_state_bin(PackedByteArray data) {
@@ -406,8 +347,14 @@ public:
 		return as;
 	}
 
-	void apply_animation_state(SkeletonState* skeleton_state, OzzAnimationState *state) {
-		skeleton_state->update(state);
+	void apply_animation_state(OzzAnimationState *state) {
+        dt = 0.f;
+		if (!started) {
+			memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
+			started = true;
+		}
+		memcpy(from_locals.data(), to_locals.data(), to_locals.size() * sizeof(ozz::math::SoaTransform));
+		memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
 	}
 
 	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false) {
@@ -470,16 +417,16 @@ public:
 				if (!rotation_sampler.Run()) {
 					return false;
 				}
-
-				state->transform = // Apply motion rotation to character transform
-						state->transform * ozz::math::Float4x4::FromQuaternion(ozz::math::simd_float4::LoadPtrU(&rotation.x));
+				
+				// Apply motion rotation to character transform
+				state->transform = state->transform * ozz::math::Float4x4::FromQuaternion(ozz::math::simd_float4::LoadPtrU(&rotation.x));
 			}
 		}
 
 		return true;
 	}
 
-	void blend_animation(Ref<OzzAnimationState> state, Ref<OzzAnimationState> blend_state, float blend_amount) {
+	void blend_animations(Ref<OzzAnimationState> state, Ref<OzzAnimationState> blend_state, float blend_amount) {
 		ozz::animation::BlendingJob::Layer layers[2];
 
 		layers[0].transform = make_span(state->locals);
@@ -505,7 +452,7 @@ public:
 		}
 	}
 
-	void add_animation(Ref<OzzAnimationState> state, Ref<OzzAnimationState> blend_state, float blend_amount) {
+	void add_animations(Ref<OzzAnimationState> state, Ref<OzzAnimationState> blend_state, float blend_amount) {
 		ozz::animation::BlendingJob::Layer layers[2];
 
 		layers[0].transform = make_span(state->locals);
@@ -582,6 +529,12 @@ public:
 		// isn't valid.
 		skeleton = builder(raw_skeleton);
 		ERR_FAIL_NULL_MSG(skeleton.get(), "Skeleton failed to build");
+
+		// Just load from resource
+		if (bind_poses.size() == 0) {
+			WARN_PRINT("No bind poses provided. Building skin. Consider passing precomputed binds to prevent this computation at runtime.");
+			bind_poses = build_skin();
+		}
 	}
 
 	int find_bone(String bone_name) {
@@ -594,12 +547,12 @@ public:
 	}
 
 	// TODO: Add error logs and error checks
-	PackedByteArray convert_animation_to_ozz(Ref<Animation> animation, bool extract_motion, int root_bone = 0) {
+	PackedByteArray convert_animation_to_ozz(Ref<Animation> animation, bool extract_motion, int root_bone = 0, bool use_scale = false) {
 		PackedByteArray data;
 		ozz::io::MemoryStream buf;
 		ozz::io::OArchive output(&buf);
 
-		ozz::animation::offline::RawAnimation raw_animation = load_animation(animation);
+		ozz::animation::offline::RawAnimation raw_animation = load_animation(animation, use_scale);
 
 		// Test for animation validity. These are the errors that could invalidate
 		// an animation:
@@ -677,7 +630,7 @@ public:
 		return data;
 	}
 
-	ozz::animation::offline::RawAnimation load_animation(Ref<Animation> animation) {
+	ozz::animation::offline::RawAnimation load_animation(Ref<Animation> animation, bool use_scale = false) {
 		// Use the Ozz animation builder to create an ozz animation.
 		ozz::animation::offline::RawAnimation raw_animation;
 		// All the animation keyframes times must be within range [0, duration].
@@ -736,14 +689,16 @@ public:
 						break;
 					}
 					case Animation::TYPE_SCALE_3D: {
-						int keys = animation->track_get_key_count(i);
-						for (int j = 0; j < keys; j++) {
-							Variant val = animation->track_get_key_value(i, j);
-							if (val.get_type() == Variant::VECTOR3) {
-								Vector3 scale = (Vector3)val;
-								float key_time = animation->track_get_key_time(i, j);
-								const ozz::animation::offline::RawAnimation::ScaleKey key = { key_time, ozz::math::Float3(scale.x, scale.y, scale.z) };
-								raw_animation.tracks[ozz_track].scales.push_back(key);
+						if (use_scale) {
+							int keys = animation->track_get_key_count(i);
+							for (int j = 0; j < keys; j++) {
+								Variant val = animation->track_get_key_value(i, j);
+								if (val.get_type() == Variant::VECTOR3) {
+									Vector3 scale = (Vector3)val;
+									float key_time = animation->track_get_key_time(i, j);
+									const ozz::animation::offline::RawAnimation::ScaleKey key = { key_time, ozz::math::Float3(scale.x, scale.y, scale.z) };
+									raw_animation.tracks[ozz_track].scales.push_back(key);
+								}
 							}
 						}
 						break;
@@ -795,21 +750,21 @@ public:
 		return raw_optimized_animation;
 	}
 
-    void update_skeleton_interpolated(Ref<SkeletonState> state, float delta, RID skeleton_rid, RID visibility_notifier_rid) {
-        state->dt += delta;
-        float tick_factor = CLAMP(state->dt / state->tick_time, 0.0, 1.0);
+    void update_skeleton_interpolated(float delta, RID skeleton_rid, RID visibility_notifier_rid) {
+        dt += delta;
+        float tick_factor = CLAMP(dt / tick_time, 0.0, 1.0);
 		
-		if (state->from_locals.size() != skeleton->num_soa_joints()) {
-			state->from_locals.resize(skeleton->num_soa_joints());
-			state->to_locals.resize(skeleton->num_soa_joints());
-			state->interpolated_locals.resize(skeleton->num_soa_joints());
-			state->interpolated_models.resize(skeleton->num_joints());
+		if (from_locals.size() != skeleton->num_soa_joints()) {
+			from_locals.resize(skeleton->num_soa_joints());
+			to_locals.resize(skeleton->num_soa_joints());
+			interpolated_locals.resize(skeleton->num_soa_joints());
+			models.resize(skeleton->num_joints());
 		}
 
 		ozz::animation::BlendingJob::Layer layers[2];
-		layers[0].transform = make_span(state->from_locals);
+		layers[0].transform = make_span(from_locals);
 		layers[0].weight = 1.0-tick_factor;
-		layers[1].transform = make_span(state->to_locals);
+		layers[1].transform = make_span(to_locals);
 		layers[1].weight = tick_factor;
 		
 		// Setups blending job.
@@ -817,7 +772,7 @@ public:
 		blend_job.threshold = threshold;
 		blend_job.layers = layers;
 		blend_job.rest_pose = skeleton->joint_rest_poses();
-		blend_job.output = make_span(state->interpolated_locals);
+		blend_job.output = make_span(interpolated_locals);
 		
 		// Blends.
 		if (!blend_job.Run()) {
@@ -827,47 +782,18 @@ public:
 		// Converts from local space to model space matrices.
 		ozz::animation::LocalToModelJob ltm_job;
 		ltm_job.skeleton = skeleton.get();
-		ltm_job.input = make_span(state->interpolated_locals);
-		ltm_job.output = make_span(state->interpolated_models);
+		ltm_job.input = make_span(interpolated_locals);
+		ltm_job.output = make_span(models);
 		if (!ltm_job.Run()) {
 			return;
 		}
 		
 		AABB aabb = AABB();
-		int binds = state->bind_to_bone.size();
-        for (int i = 0; i < binds; i++) {
+		int bind_count = binds.size();
+        for (int i = 0; i < bind_count; i++) {
         	// Only update the bones that are bound
-			int bone = state->bind_to_bone[i];
-			ozz::math::Float4x4 m = state->interpolated_models[bone];
-			Transform3D pose = Transform3D( // THIS MAY BE WRONG
-				ozz::math::GetX(m.cols[0]), ozz::math::GetX(m.cols[1]), ozz::math::GetX(m.cols[2]),
-				ozz::math::GetY(m.cols[0]), ozz::math::GetY(m.cols[1]), ozz::math::GetY(m.cols[2]),
-				ozz::math::GetZ(m.cols[0]), ozz::math::GetZ(m.cols[1]), ozz::math::GetZ(m.cols[2]),
-				ozz::math::GetX(m.cols[3]), ozz::math::GetY(m.cols[3]), ozz::math::GetZ(m.cols[3])
-			
-			);
-			aabb = aabb.expand(pose.origin);
-			RenderingServer::get_singleton()->skeleton_bone_set_transform(skeleton_rid, i, pose * state->bind_poses[bone]);
-        }
-        RenderingServer::get_singleton()->visibility_notifier_set_aabb(visibility_notifier_rid, aabb);
-    }
-
-    void update_skeleton(Ref<SkeletonState> state, RID skeleton_rid, RID visibility_notifier_rid) {
-		// Converts from local space to model space matrices.
-		ozz::animation::LocalToModelJob ltm_job;
-		ltm_job.skeleton = skeleton.get();
-		ltm_job.input = make_span(state->to_locals);
-		ltm_job.output = make_span(state->interpolated_models);
-		if (!ltm_job.Run()) {
-			return;
-		}
-		
-		AABB aabb = AABB();
-		int binds = state->bind_to_bone.size();
-        for (int i = 0; i < binds; i++) {
-        	// Only update the bones that are bound
-			int bone = state->bind_to_bone[i];
-			ozz::math::Float4x4 m = state->interpolated_models[bone];
+			int bone = binds[i];
+			ozz::math::Float4x4 m = models[bone];
 			Transform3D pose = Transform3D(
 				ozz::math::GetX(m.cols[0]), ozz::math::GetX(m.cols[1]), ozz::math::GetX(m.cols[2]),
 				ozz::math::GetY(m.cols[0]), ozz::math::GetY(m.cols[1]), ozz::math::GetY(m.cols[2]),
@@ -876,10 +802,38 @@ public:
 			
 			);
 			aabb = aabb.expand(pose.origin);
-			RenderingServer::get_singleton()->skeleton_bone_set_transform(skeleton_rid, i, pose * state->bind_poses[bone]);
+			RenderingServer::get_singleton()->skeleton_bone_set_transform(skeleton_rid, i, pose * static_cast<Transform3D>(bind_poses[bone]));
         }
         RenderingServer::get_singleton()->visibility_notifier_set_aabb(visibility_notifier_rid, aabb);
     }
+
+    void update_skeleton(RID skeleton_rid, RID visibility_notifier_rid) {
+		// Converts from local space to model space matrices.
+		ozz::animation::LocalToModelJob ltm_job;
+		ltm_job.skeleton = skeleton.get();
+		ltm_job.input = make_span(to_locals);
+		ltm_job.output = make_span(models);
+		if (!ltm_job.Run()) {
+			return;
+		}
+		
+		AABB aabb = AABB();
+		int bind_count = binds.size();
+        for (int i = 0; i < bind_count; i++) {
+        	// Only update the bones that are bound
+			int bone = binds[i];
+			ozz::math::Float4x4 m = models[bone];
+			Transform3D pose = ozz_to_godot_xform(m);
+			aabb = aabb.expand(pose.origin);
+			RenderingServer::get_singleton()->skeleton_bone_set_transform(skeleton_rid, i, pose * static_cast<Transform3D>(bind_poses[bone]));
+        }
+        RenderingServer::get_singleton()->visibility_notifier_set_aabb(visibility_notifier_rid, aabb);
+    }
+
+	void update_skeleton_ragdoll() {
+		// Updates the skeleton but uses the poses of the hitboxes in SkeletonState
+
+	}
 
 	Array get_parentless_bones() {
 		Array bones;
@@ -948,13 +902,46 @@ public:
 		ClassDB::bind_method(D_METHOD("play_animation", "state", "delta", "update_state", "sample_motion"), &OzzGD::play_animation);
 		//ClassDB::bind_method(D_METHOD("new_state", "animation"), &OzzGD::new_state);
 		ClassDB::bind_method(D_METHOD("new_state_bin", "data"), &OzzGD::new_state_bin);
-		ClassDB::bind_method(D_METHOD("blend_animation", "state", "blend_state", "blend_amount"), &OzzGD::blend_animation);
+		ClassDB::bind_method(D_METHOD("blend_animations", "state", "blend_state", "blend_amount"), &OzzGD::blend_animations);
 		//ClassDB::bind_method(D_METHOD("load_animation", "skeleton", "animation"), &OzzGD::load_animation);
 		ClassDB::bind_method(D_METHOD("load_skeleton"), &OzzGD::load_skeleton);
 		ClassDB::bind_method(D_METHOD("convert_animation_to_ozz", "animation", "extract_motion", "root_bone"), &OzzGD::convert_animation_to_ozz, DEFVAL(NULL), DEFVAL(false), DEFVAL(0));
-		ClassDB::bind_method(D_METHOD("apply_animation_state", "skeleton_state", "animation_state"), &OzzGD::apply_animation_state);
-        ClassDB::bind_method(D_METHOD("update_skeleton", "state", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton);
-		ClassDB::bind_method(D_METHOD("update_skeleton_interpolated", "state", "delta", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton_interpolated);
+		ClassDB::bind_method(D_METHOD("apply_animation_state", "animation_state"), &OzzGD::apply_animation_state);
+        ClassDB::bind_method(D_METHOD("update_skeleton", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton);
+		ClassDB::bind_method(D_METHOD("update_skeleton_interpolated", "delta", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton_interpolated);
+	
+        ClassDB::bind_method(D_METHOD("get_tick_time"), &OzzGD::get_tick_time);
+        ClassDB::bind_method(D_METHOD("set_tick_time", "p_tick_time"), &OzzGD::set_tick_time);
+
+        ClassDB::add_property(
+            "OzzGD", 
+            PropertyInfo(Variant::FLOAT, "tick_time", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), 
+            "set_tick_time", 
+            "get_tick_time"
+        );
+
+        ClassDB::bind_method(D_METHOD("get_binds"), &OzzGD::get_binds);
+        ClassDB::bind_method(D_METHOD("set_binds", "p_binds"), &OzzGD::set_binds);
+
+        ClassDB::add_property(
+            "OzzGD", 
+            PropertyInfo(Variant::FLOAT, "binds", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT), 
+            "set_binds", 
+            "get_binds"
+        );
+
+        ClassDB::bind_method(D_METHOD("get_bind_poses"), &OzzGD::get_bind_poses);
+        ClassDB::bind_method(D_METHOD("set_bind_poses", "p_bind_poses"), &OzzGD::set_bind_poses);
+
+        ClassDB::add_property(
+            "OzzGD", 
+            PropertyInfo(Variant::ARRAY, "bind_poses", PROPERTY_HINT_TYPE_STRING, 
+				String::num(Variant::TRANSFORM3D) + "/", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY),
+            "set_bind_poses", 
+            "get_bind_poses"
+        );
+	
+		ClassDB::bind_method(D_METHOD("update_hitboxes", "global_transform", "hitboxes"), &OzzGD::update_hitboxes);
 	}
 };
 
