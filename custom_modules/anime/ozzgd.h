@@ -9,11 +9,13 @@ PITFALLS:
 */
 
 // TODO:
-// 1. OzzAnimation resource in Godot. Convert and save them so they can be quickly loaded by the engine? Convert/optimise at runtime slow?
-// 3. Support Godot method tracks by just using the godot animation and only sampling the method tracks
+// 1. OzzAnimationResource in Godot. We dont want to waste loading an animation resource twice.
+//		godot should automatically cache the OzzAnimationResource. The first time the OzzAnimationResource is used we
+//		create and store a pointer to the ozz:animation inside. Then repeat loadings simply reference the pointer.
+// 3. Support Godot method tracks by just using the godot animation and only sampling the method tracks. Easier than Ozz custom tracks
+// 4. Support motion extraction and loading and playback
 // 4. Inertia blending. Dont cross blend. Simply snap to next animation. When snap occurs trigger a temporary post processing
-// 	which blends the last pose into the current. 
-// 5. remove scale tracks if not needed for an animation
+// 	which blends the last pose into the current. See the orange duck post on spring-roll-call
 
 #include "ozz/animation/offline/animation_builder.h"
 #include "ozz/animation/offline/motion_extractor.h"
