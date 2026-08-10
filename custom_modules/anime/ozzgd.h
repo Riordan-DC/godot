@@ -844,22 +844,29 @@ public:
 		for (int i = 0; i < rests.size(); i++)
 			poses[i] = static_cast<Transform3D>(rests[i]);
 
+		// Poses must be in model space
+		// rests are in local space
+		// global rests are in model space
+		// hitbox poses are in model space
+		
+		// We want to loop through all the binds
+		// For every bound bone we want to check if 
 		while (q.size() > 0) {
 			int bone = q.pop_front();
 			Transform3D bone_pose = poses[bone];
-			/*
+			
 			if (bodies.has(bone)) {
 				RID body_rid = static_cast<RID>(bodies[bone]);
 				Transform3D body_transform = PhysicsServer3D::get_singleton()->body_get_state(body_rid, PhysicsServer3D::BODY_STATE_TRANSFORM);
 				bone_pose = global_transform_inv * body_transform;
 				poses[bone] = bone_pose;
 			}
-			*/
 			
 			Array bone_children = static_cast<Array>(children[bone]);
 			for (int i = 0; i < bone_children.size(); i++) {
-				if (!bodies.has(i)) {
-					poses[i] = bone_pose * static_cast<Transform3D>(rests[i]);
+				int child_bone = bone_children[i];
+				if (!bodies.has(child_bone)) {
+					poses[child_bone] = bone_pose * static_cast<Transform3D>(rests[child_bone]);
 				}
 			}
 			q.append_array(bone_children);
