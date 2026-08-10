@@ -225,7 +225,9 @@ public:
 
 	// SkeletonState
     int bones = 0;
-    //TypedArray<Transform3D> global_rests;
+	TypedArray<Transform3D> get_global_rests() { return global_rests; }
+	void set_global_rests(TypedArray<Transform3D> r) { global_rests = r; }
+    TypedArray<Transform3D> global_rests;
 
 	bool started = false;
 
@@ -832,23 +834,27 @@ public:
         RenderingServer::get_singleton()->visibility_notifier_set_aabb(visibility_notifier_rid, aabb);
     }
 
-	void update_skeleton_ragdoll(Transform3D global_transform, HashMap<int, RID> bodies) {
+	void update_skeleton_ragdoll(Transform3D global_transform, Dictionary bodies, RID skeleton_rid, RID visibility_notifier_rid) {
 		// Updates the skeleton but uses the poses of the hitboxes
 		Transform3D global_transform_inv = global_transform.inverse();
 		TypedArray<int> q;
 		q.append(0);
 
-		Dictionary poses;
+		HashMap<int, Transform3D> poses;
+		for (int i = 0; i < rests.size(); i++)
+			poses[i] = static_cast<Transform3D>(rests[i]);
 
 		while (q.size() > 0) {
 			int bone = q.pop_front();
 			Transform3D bone_pose = poses[bone];
+			/*
 			if (bodies.has(bone)) {
 				RID body_rid = static_cast<RID>(bodies[bone]);
 				Transform3D body_transform = PhysicsServer3D::get_singleton()->body_get_state(body_rid, PhysicsServer3D::BODY_STATE_TRANSFORM);
 				bone_pose = global_transform_inv * body_transform;
 				poses[bone] = bone_pose;
 			}
+			*/
 			
 			Array bone_children = static_cast<Array>(children[bone]);
 			for (int i = 0; i < bone_children.size(); i++) {
@@ -858,6 +864,18 @@ public:
 			}
 			q.append_array(bone_children);
 		}
+
+		AABB aabb = AABB();
+		int bind_count = binds.size();
+        for (int i = 0; i < bind_count; i++) {
+        	// Only update the bones that are bound
+			int bone = binds[i];
+			Transform3D pose = poses[bone];
+			aabb = aabb.expand(pose.origin);
+			RenderingServer::get_singleton()->skeleton_bone_set_transform(skeleton_rid, i, pose * static_cast<Transform3D>(bind_poses[bone]));
+        }
+        RenderingServer::get_singleton()->visibility_notifier_set_aabb(visibility_notifier_rid, aabb);
+
 	}
 
 	Array get_parentless_bones() {
@@ -918,6 +936,12 @@ public:
 			String::num(Variant::TRANSFORM3D) + "/", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY),
 			"set_rests", "get_rests");
 
+		ADD_SETTER(OzzGD, set_global_rests, global_rests, Array());
+		ADD_GETTER(OzzGD, get_global_rests);
+		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "global_rests", PROPERTY_HINT_TYPE_STRING, 
+			String::num(Variant::TRANSFORM3D) + "/", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY),
+			"set_global_rests", "get_global_rests");
+		
 		ADD_SETTER(OzzGD, set_children, children, Array());
 		ADD_GETTER(OzzGD, get_children);
 		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "children", PROPERTY_HINT_TYPE_STRING, 
@@ -967,6 +991,7 @@ public:
         );
 	
 		ClassDB::bind_method(D_METHOD("update_hitboxes", "global_transform", "hitboxes"), &OzzGD::update_hitboxes);
+		ClassDB::bind_method(D_METHOD("update_skeleton_ragdoll", "global_transform", "bodies", "skeleton_rid", "visibility_rid"), &OzzGD::update_skeleton_ragdoll);
 	}
 };
 
