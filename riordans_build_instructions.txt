@@ -8,6 +8,19 @@ scons platform=macos tools=yes target=editor -j10 custom_modules=./custom_module
 templates
 ---------
 scons platform=windows target=template_debug arch=x86_64 custom_modules=./custom_modules -j10 profile=custom.py winrt=no
+Web
+---
+https://docs.godotengine.org/en/stable/engine_details/development/compiling/compiling_for_web.html
+Download emsdk: git clone https://github.com/emscripten-core/emsdk.git
+https://emscripten.org/docs/getting_started/downloads.html
+# Fetch the latest version of the emsdk (not needed the first time you clone)
+git pull
+# Download and install the latest SDK tools.
+./emsdk install latest
+# Make the "latest" SDK "active" for the current user. (writes .emscripten file)
+./emsdk activate latest
+# Activate PATH and other environment variables in the current terminal
+source ./emsdk_env.sh
 scons platform=web target=template_debug arch=wasm32 custom_modules=./custom_modules -j10 profile=custom.py
 
 scons platform=windows target=template_release arch=x86_64 -j10 profile=app.py winrt=no
