@@ -32,6 +32,7 @@ PITFALLS:
 #include "ozz/animation/runtime/sampling_job.h"
 #include "ozz/animation/runtime/skeleton.h"
 #include "ozz/animation/runtime/track_sampling_job.h"
+#include "ozz/animation/runtime/track_triggering_job.h"
 #include "ozz/base/io/archive.h"
 #include "ozz/base/io/stream.h"
 #include "ozz/base/log.h"
@@ -66,6 +67,7 @@ PITFALLS:
 #include "scene/resources/animation.h"
 #include "servers/physics_3d/physics_server_3d.h"
 #include "servers/rendering/rendering_server.h"
+#include "core/variant/variant.h"
 
 #include <stdalign.h>
 
@@ -151,6 +153,11 @@ public:
 	std::vector<Vector3> positions;
 	std::vector<Vector4> rotations;
 	std::vector<Vector3> scales;
+
+	// Settings
+	bool has_motion = false;
+	bool has_events = false;
+	bool sample_events = true;
 
 	void set_joint_weights(PackedFloat32Array weights) {
 		int num_soa_joints = joint_weights.size();
@@ -322,9 +329,11 @@ public:
 		// Load motion tracks
 		if (input.TestTag<ozz::animation::Float3Track>()) {
 			input >> as->motion_track.position;
+			as->has_motion = true;
 		}
 		if (input.TestTag<ozz::animation::QuaternionTrack>()) {
 			input >> as->motion_track.rotation;
+			as->has_motion = true;
 		}
 
 		// Load event tracks
@@ -332,6 +341,7 @@ public:
 			ozz::unique_ptr<ozz::animation::FloatTrack> event_track = ozz::make_unique<ozz::animation::FloatTrack>();
 			input >> *event_track.get();
 			as->events.push_back(std::move(event_track));
+			as->has_events = true;
 		}
 
 		const int num_joints = skeleton->num_joints();
@@ -365,7 +375,7 @@ public:
 		memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
 	}
 
-	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false) {
+	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false, bool sample_events = true) {
 		// Skeleton and animation needs to match.
 		if (skeleton->num_joints() != state->animation->num_tracks()) {
 			Array args;
@@ -394,30 +404,7 @@ public:
 		}
 
 		// Sample motion
-		// if (sample_motion) {
-		// 	bool apply_motion_position = true;
-		// 	bool apply_motion_rotation = true;
-		// 	// Reset character transform
-		// 	state->transform = ozz::math::Float4x4::identity();
-
-		// 	// Updates motion accumulator.
-		// 	const auto rotation = FrameRotation(delta * state->controller.playback_speed() *
-		// 			state->controller.playing());
-		// 	if (state->motion_sampler.Update(state->motion_track, state->controller.time_ratio(), loops,
-		// 				rotation)) {
-		// 		// Updates the character transform matrix.
-		// 		const auto &transform = state->motion_sampler.current;
-		// 		state->transform = ozz::math::Float4x4::FromAffine(
-		// 			apply_motion_position ? transform.translation
-		// 			: ozz::math::Float3::zero(),
-		// 			apply_motion_rotation ? transform.rotation
-		// 			: ozz::math::Quaternion::identity(),
-		// 			transform.scale);
-		// 	}
-		// }
-
-		// Sample motion
-		if (sample_motion) {
+		if (sample_motion && state->has_motion) {
 			bool apply_motion_position = true;
 			bool apply_motion_rotation = true;
 			// Reset character transform
@@ -451,6 +438,35 @@ public:
 
 				// Apply motion rotation to character transform
 				state->transform = state->transform * ozz::math::Float4x4::FromQuaternion(ozz::math::simd_float4::LoadPtrU(&rotation.x));
+			}
+		}
+
+		// Sample events
+		if (sample_events && state->has_events) {
+			ozz::animation::TrackTriggeringJob job;
+			job.from = state->controller.previous_time_ratio();
+			job.to = state->controller.time_ratio() + 0.0003f;
+			job.threshold = 0.f;
+
+			for (int i = 0; i < state->events.size(); i++) {
+				ozz::unique_ptr<ozz::animation::FloatTrack> &track = state->events[i];
+				job.track = track.get();
+				ozz::animation::TrackTriggeringJob::Iterator iterator;
+				job.iterator = &iterator;
+				if (!job.Run()) {
+					continue;
+				}
+				
+				// Iteratively evaluates all edges.
+				// Edges are lazily evaluated on iterator increments.
+				for (const ozz::animation::TrackTriggeringJob::Iterator end = job.end();
+				iterator != end; ++iterator) {
+					const ozz::animation::TrackTriggeringJob::Edge &edge = *iterator;
+					if (edge.rising) {
+						String track_name = String(track->name());
+						emit_signal("event_triggered", track_name);
+					}
+				}
 			}
 		}
 
@@ -656,7 +672,57 @@ public:
 			output << *ozz_animation.get();
 		}
 
-		// TODO: Add event tracks
+		// Event tracks
+		ozz::vector<ozz::animation::offline::RawFloatTrack> raw_event_tracks;
+		for (int i = 0; i < animation->get_track_count(); i++) {
+
+			Animation::TrackType type = animation->track_get_type(i);
+			NodePath path = animation->track_get_path(i);
+			if (type == Animation::TYPE_METHOD) {
+				int keys = animation->track_get_key_count(i);
+				for (int j = 0; j < keys; j++) {
+					StringName method_name = animation->method_track_get_name(i, j);
+					if (method_name == "EVENT") {
+						Vector<Variant> args = animation->method_track_get_params(i, j);
+						if (args.size() > 0) {
+							Variant event_name = args[0];
+							if (event_name.get_type() == Variant::Type::STRING) {
+								String event_name_string = static_cast<String>(event_name);
+								// Find/create event track
+								ozz::animation::offline::RawFloatTrack raw_event_track;
+								for (ozz::animation::offline::RawFloatTrack raw_track : raw_event_tracks) {
+									if (strcmp(raw_track.name.c_str(), event_name_string.utf8().get_data())) {
+										raw_event_track = raw_track;
+									}
+								}
+								ozz::animation::offline::RawTrackKeyframe<float> frame;
+								frame.value = 1.f;
+								frame.ratio = CLAMP(animation->track_get_key_time(i, j) / animation->get_length(), 0.0002f, animation->get_length());
+								ozz::animation::offline::RawTrackKeyframe<float> low;
+								low.value = 0.f;
+								low.ratio = frame.ratio-0.0001f;
+								raw_event_track.keyframes.push_back(low);
+								raw_event_track.keyframes.push_back(frame);
+
+								if (raw_event_track.name.empty()) {
+									raw_event_track.name = ozz::string(event_name_string.utf8().get_data());
+									raw_event_tracks.push_back(raw_event_track);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		for (const ozz::animation::offline::RawFloatTrack track : raw_event_tracks) {
+			ozz::animation::offline::TrackBuilder track_builder;
+			auto event_track = track_builder(track);
+			if (!event_track) {
+				continue;
+			}
+			output << *event_track.get();
+		}
+		
 
 		buf.Seek(0, ozz::io::MemoryStream::kSet);
 		for (int i = 0; i < buf.Size(); i++) {
@@ -984,7 +1050,7 @@ public:
 				"set_children", "get_children");
 
 		ClassDB::bind_method(D_METHOD("init"), &OzzGD::init);
-		ClassDB::bind_method(D_METHOD("play_animation", "state", "delta", "update_state", "sample_motion"), &OzzGD::play_animation);
+		ClassDB::bind_method(D_METHOD("play_animation", "state", "delta", "update_state", "sample_motion", "sample_events"), &OzzGD::play_animation);
 		//ClassDB::bind_method(D_METHOD("new_state", "animation"), &OzzGD::new_state);
 		ClassDB::bind_method(D_METHOD("new_state_bin", "data"), &OzzGD::new_state_bin);
 		ClassDB::bind_method(D_METHOD("blend_animations", "state", "blend_state", "blend_amount"), &OzzGD::blend_animations);
@@ -1024,6 +1090,8 @@ public:
 
 		ClassDB::bind_method(D_METHOD("update_hitboxes", "global_transform", "hitboxes"), &OzzGD::update_hitboxes);
 		ClassDB::bind_method(D_METHOD("update_skeleton_ragdoll", "global_transform", "bodies", "skeleton_rid", "visibility_rid"), &OzzGD::update_skeleton_ragdoll);
+					
+		ClassDB::add_signal("OzzGD", MethodInfo("event_triggered", PropertyInfo(Variant::STRING, "event_name")));
 	}
 };
 
