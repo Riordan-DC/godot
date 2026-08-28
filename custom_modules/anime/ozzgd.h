@@ -1022,6 +1022,11 @@ public:
 		return bind_poses;
 	}
 
+	Transform3D get_bone_model_pose(int bone_id) {
+		if (bone_id < 0 || bone_id > models.size()) return Transform3D();
+		return ozz_to_godot_xform(models[bone_id]);
+	}
+
 	static void _bind_methods() {
 		ADD_SETTER(OzzGD, set_names, names, PackedStringArray());
 		ADD_GETTER(OzzGD, get_names);
@@ -1062,6 +1067,8 @@ public:
 
 		ClassDB::bind_method(D_METHOD("get_tick_time"), &OzzGD::get_tick_time);
 		ClassDB::bind_method(D_METHOD("set_tick_time", "p_tick_time"), &OzzGD::set_tick_time);
+
+		ClassDB::bind_method(D_METHOD("get_bone_model_pose", "bone_id"), &OzzGD::get_bone_model_pose);
 
 		ClassDB::add_property(
 				"OzzGD",
