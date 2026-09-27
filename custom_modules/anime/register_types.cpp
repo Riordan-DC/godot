@@ -16,6 +16,7 @@ void initialize_anime_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<TrackCache>();
     ClassDB::register_class<AnimationState>();
     ClassDB::register_class<BlendSpace2D>();
+	ClassDB::register_class<OzzBlendSpace2D>();
 
 
 	ClassDB::register_class<OzzGD>();

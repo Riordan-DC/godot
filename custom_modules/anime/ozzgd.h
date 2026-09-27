@@ -9,13 +9,10 @@ PITFALLS:
 */
 
 // TODO:
-// 1. OzzAnimationResource in Godot. We dont want to waste loading an animation resource twice.
-//		godot should automatically cache the OzzAnimationResource. The first time the OzzAnimationResource is used we
-//		create and store a pointer to the ozz:animation inside. Then repeat loadings simply reference the pointer.
-// 3. Support Godot method tracks by just using the godot animation and only sampling the method tracks. Easier than Ozz custom tracks
-// 4. Support motion extraction and loading and playback
 // 4. Inertia blending. Dont cross blend. Simply snap to next animation. When snap occurs trigger a temporary post processing
 // 	which blends the last pose into the current. See the orange duck post on spring-roll-call
+// 5. Aim offsets
+// 6. mesh space additive
 
 #include "ozz/animation/offline/animation_builder.h"
 #include "ozz/animation/offline/animation_optimizer.h"
@@ -68,6 +65,8 @@ PITFALLS:
 #include "servers/physics_3d/physics_server_3d.h"
 #include "servers/rendering/rendering_server.h"
 #include "core/variant/variant.h"
+#include "scene/main/node.h"
+//#include "scene/main/scene_tree.h
 
 #include <stdalign.h>
 
@@ -102,12 +101,17 @@ struct WeightSetupIterator {
 	float weight_setting;
 };
 
+// Blend matrix
+// setup(animations[], width: int)
+// setup_offset(animation, frames: int)
+
+
 class OzzAnimationState : public RefCounted {
 	GDCLASS(OzzAnimationState, RefCounted);
 
 public:
 	// Constructor, default initialization.
-	OzzAnimationState() : weight(1.f), joint_weight_setting(1.f), transform(ozz::math::Float4x4::identity()) {
+	OzzAnimationState() : weight(1.f), joint_weight_setting(1.f), transform(ozz::math::Float4x4::identity()), factor(1.f) {
 	}
 
 	// Playback animation controller. This is a utility class that helps with
@@ -116,6 +120,9 @@ public:
 
 	// Blending weight for the layer.
 	float weight;
+
+	// Multiplied by delta. If negative, reversed
+	float factor;
 
 	// Blending weight_setting setting of the joints of this layer that are
 	// affected
@@ -182,58 +189,78 @@ public:
 		}
 	}
 
+	void copy_pose(Ref<OzzAnimationState> as) {
+		if (locals.size() != as->locals.size()) {
+			locals.resize(as->locals.size());
+		}
+		locals.assign(as->locals.begin(), as->locals.end());
+	}
+
+	float get_duration() { return animation->duration(); }
+
 	void set_weight(float w) { weight = w; }
 	float get_weight() { return weight; }
+
+	void set_factor(float f) { factor = f; }
+	float get_factor() { return factor; }
 
 	Transform3D get_transform() {
 		return ozz_to_godot_xform(transform);
 	}
 
+	void set_time_stretch(float p_time_stretch) {
+		factor = animation->duration() * (1.f / p_time_stretch);
+		// duration * (1 / factor) = time_stretch
+		// duration * (1 / time_stretch) = factor
+	}
+
+	void set_reversed(bool p_reversed) {
+		if (p_reversed) {
+			factor = abs(factor) * -1.f;
+		} else {
+			factor = abs(factor);
+		}
+	}
+
 	static void _bind_methods() {
 		ClassDB::bind_method(D_METHOD("set_joint_weights", "weights"), &OzzAnimationState::set_joint_weights, DEFVAL(PackedFloat32Array()));
 		ClassDB::bind_method(D_METHOD("get_transform"), &OzzAnimationState::get_transform);
+		ClassDB::bind_method(D_METHOD("get_duration"), &OzzAnimationState::get_duration);
+		ClassDB::bind_method(D_METHOD("copy_pose", "animation_state"), &OzzAnimationState::copy_pose);
+		ClassDB::bind_method(D_METHOD("set_time_stretch", "stretch"), &OzzAnimationState::set_time_stretch, DEFVAL(1.f));
+		ClassDB::bind_method(D_METHOD("set_reversed", "reversed"), &OzzAnimationState::set_reversed, DEFVAL(false));
 		// setgets
 		ADD_SETTER(OzzAnimationState, set_weight, weight, 1.0)
 		ADD_GETTER(OzzAnimationState, get_weight)
 		ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "weight"), "set_weight", "get_weight");
+		ADD_SETTER(OzzAnimationState, set_factor, factor, 1.0)
+		ADD_GETTER(OzzAnimationState, get_factor)
+		ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "factor"), "set_factor", "get_factor");
 	}
 };
+
+
 
 class OzzGD : public RefCounted {
 	GDCLASS(OzzGD, RefCounted);
 
 public:
-	// Runtime skeleton.
 	ozz::unique_ptr<ozz::animation::Skeleton> skeleton;
 	float time = 0.0f;
 	float threshold = ozz::animation::BlendingJob().threshold;
 
-	PackedStringArray names;
-	PackedStringArray get_names() { return names; }
-	void set_names(PackedStringArray n) { names = n; }
-
-	TypedArray<Transform3D> rests;
-	TypedArray<Transform3D> get_rests() { return rests; }
-	void set_rests(TypedArray<Transform3D> r) { rests = r; }
-
-	TypedArray<PackedInt32Array> children;
-	TypedArray<PackedInt32Array> get_children() { return children; }
-	void set_children(TypedArray<PackedInt32Array> c) { children = c; }
-
-	PackedInt32Array parents;
-	PackedInt32Array get_parents() { return parents; }
-	void set_parents(PackedInt32Array p) { parents = p; }
-
-	// SkeletonState
 	int bones = 0;
-	TypedArray<Transform3D> get_global_rests() { return global_rests; }
-	void set_global_rests(TypedArray<Transform3D> r) { global_rests = r; }
+	PackedStringArray names;
+	TypedArray<Transform3D> rests;
+	TypedArray<PackedInt32Array> children;
+	PackedInt32Array parents;
 	TypedArray<Transform3D> global_rests;
+	TypedArray<Transform3D> bind_poses;
+	PackedInt32Array binds;
 
 	bool started = false;
 
 	float dt = 0.f;
-
 	float tick_time = 1.f / 30.f;
 	float get_tick_time() { return tick_time; }
 	void set_tick_time(float p_tick_time) { tick_time = p_tick_time; }
@@ -243,36 +270,48 @@ public:
 	ozz::vector<ozz::math::SoaTransform> interpolated_locals;
 	ozz::vector<ozz::math::Float4x4> models;
 
-	TypedArray<Transform3D> bind_poses;
-	TypedArray<Transform3D> get_bind_poses() { return bind_poses; }
-	void set_bind_poses(TypedArray<Transform3D> p_bind_poses) { bind_poses = p_bind_poses; }
-
-	PackedInt32Array binds;
-	PackedInt32Array get_binds() { return binds; }
-	void set_binds(PackedInt32Array p_binds) { binds = p_binds; }
-	//HashMap<int, int> bind_map;
-
 	// For curving root motion animations
 	float angular_velocity = 0.f;
 
 	OzzGD() {
+		// SceneTree* st = owner->get_tree();
+		// st->
 	}
 
-	bool init() {
+	bool init(
+		PackedStringArray p_names, 
+		TypedArray<PackedInt32Array> p_children,
+		TypedArray<Transform3D> p_rests, 
+		TypedArray<Transform3D> p_global_rests, 
+		TypedArray<Transform3D> p_bind_poses,
+		PackedInt32Array p_binds
+	) {
+		if (p_binds.is_empty() || p_names.is_empty() || p_children.is_empty() || p_rests.is_empty() || p_global_rests.is_empty() || p_bind_poses.is_empty()) {
+			ERR_PRINT("OzzGD Init error: One input array is zero. Invalid configuration.");
+			return false;
+		};
+
+		size_t bones = p_names.size();
+		if (p_children.size() != bones || p_rests.size() != bones || p_global_rests.size() != bones || p_bind_poses.size() != bones) {
+			ERR_PRINT("OzzGD Init error: One input array is not the same size. Invalid.");
+			return false;
+		}
+
+		binds = p_binds;
+		bind_poses = p_bind_poses;
+		children = p_children;
+		global_rests = p_global_rests;
+		rests = p_rests;
+		names = p_names;
+
+		if (load_skeleton() == false) {
+			return false;
+		}
+
 		if (skeleton.get() == nullptr) {
 			ERR_PRINT("Ozz skeleton is null");
 			return false;
 		}
-
-		if (binds.is_empty()) {
-			ERR_PRINT("Bind indices is zero. Invalid configuration.");
-			return false;
-		};
-
-		if (bind_poses.is_empty()) {
-			ERR_PRINT("Bind poses is zero. Invalid configuration.");
-			return false;
-		};
 
 		from_locals.resize(skeleton->num_soa_joints());
 		to_locals.resize(skeleton->num_soa_joints());
@@ -305,7 +344,7 @@ public:
 		return ozz::math::Quaternion::FromEuler({ angle, 0, 0 });
 	}
 
-	Ref<OzzAnimationState> new_state_bin(PackedByteArray data) {
+	Ref<OzzAnimationState> new_state() {
 		if (skeleton.get() == nullptr) {
 			ERR_PRINT("Ozz skeleton is null. Cannot create new animation state.");
 			return nullptr;
@@ -314,13 +353,46 @@ public:
 		// Test loading
 		Ref<OzzAnimationState> as = Ref<OzzAnimationState>(memnew(OzzAnimationState));
 
+		const int num_joints = skeleton->num_joints();
+		const int num_soa_joints = skeleton->num_soa_joints();
+
+		// Allocates sampler runtime buffers.
+		as->locals.resize(num_soa_joints);
+		as->models.resize(num_joints);
+		// Allocates a context that matches animation requirements.
+		as->context.Resize(num_joints);
+
+		// Allocates per-joint weights used for the partial animation. Note that
+		// this is a Soa structure.
+		as->joint_weights.resize(num_soa_joints);
+
+		// Enable all joints
+		for (int i = 0; i < skeleton->num_soa_joints(); ++i) {
+			as->joint_weights[i] = ozz::math::simd_float4::one();
+		}
+
+		// State initially in rest pose
+		as->locals.assign(skeleton->joint_rest_poses().begin(), skeleton->joint_rest_poses().end());
+
+		return as;
+	}
+
+	Ref<OzzAnimationState> new_state_bin(PackedByteArray data) {
+		if (skeleton.get() == nullptr) {
+			ERR_PRINT("Ozz skeleton is null. Cannot create new animation state.");
+			return nullptr;
+		}
+
+		// Test loading
+		Ref<OzzAnimationState> as = new_state();
+
 		ozz::io::MemoryStream inbuf;
 		inbuf.Write((void *)data.ptr(), data.size()); // IMPORTANT: You must write to the buffer before assigning to the archive
 		inbuf.Seek(0, ozz::io::MemoryStream::kSet);
 		ozz::io::IArchive input(&inbuf); // Initialising the archive reads the first byte from the buffer! The endianess!
 
 		if (!input.TestTag<ozz::animation::Animation>()) {
-			return as;
+			return nullptr;
 		}
 
 		as->animation = ozz::make_unique<ozz::animation::Animation>();
@@ -344,24 +416,6 @@ public:
 			as->has_events = true;
 		}
 
-		const int num_joints = skeleton->num_joints();
-		const int num_soa_joints = skeleton->num_soa_joints();
-
-		// Allocates sampler runtime buffers.
-		as->locals.resize(num_soa_joints);
-		as->models.resize(num_joints);
-		// Allocates a context that matches animation requirements.
-		as->context.Resize(num_joints);
-
-		// Allocates per-joint weights used for the partial animation. Note that
-		// this is a Soa structure.
-		as->joint_weights.resize(num_soa_joints);
-
-		// Enable all joints
-		for (int i = 0; i < skeleton->num_soa_joints(); ++i) {
-			as->joint_weights[i] = ozz::math::simd_float4::one();
-		}
-
 		return as;
 	}
 
@@ -375,17 +429,12 @@ public:
 		memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
 	}
 
-	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false, bool sample_events = true) {
-		// Skeleton and animation needs to match.
-		if (skeleton->num_joints() != state->animation->num_tracks()) {
-			Array args;
-			args.push_back(state->animation->num_tracks());
-			args.push_back(skeleton->num_joints());
-			ERR_PRINT(String("Ozz animation tracks ({0}) doesnt match ozz skeleton joints ({1})").format(args));
+	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false, bool sample_events = true) {		
+		if (state->animation == nullptr) {
 			return false;
 		}
 
-		int loops = state->controller.Update(*state->animation, delta);
+		int loops = state->controller.Update(*state->animation, delta * state->factor);
 
 		if (update_cache == false) {
 			return false;
@@ -477,12 +526,12 @@ public:
 		ozz::animation::BlendingJob::Layer layers[2];
 
 		layers[0].transform = make_span(state->locals);
-		layers[0].weight = state->weight;
+		layers[0].weight = 1.0f - blend_amount; //state->weight;
 		// Set per-joint weights for the partially blended layer.
 		layers[0].joint_weights = make_span(state->joint_weights);
 
 		layers[1].transform = make_span(blend_state->locals);
-		layers[1].weight = blend_state->weight;
+		layers[1].weight = blend_amount; //blend_state->weight;
 		// Set per-joint weights for the partially blended layer.
 		layers[1].joint_weights = make_span(blend_state->joint_weights);
 
@@ -498,6 +547,31 @@ public:
 			return;
 		}
 	}
+
+	void blend2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> a, Ref<OzzAnimationState> b, float blend_amount) {
+		ozz::animation::BlendingJob::Layer layers[2];
+
+		layers[0].transform = make_span(a->locals);
+		layers[0].weight = 1.0f - blend_amount;
+		layers[0].joint_weights = make_span(a->joint_weights);
+
+		layers[1].transform = make_span(b->locals);
+		layers[1].weight = blend_amount;
+		layers[1].joint_weights = make_span(b->joint_weights);
+
+		// Setups blending job.
+		ozz::animation::BlendingJob blend_job;
+		blend_job.threshold = threshold;
+		blend_job.layers = layers;
+		blend_job.rest_pose = skeleton->joint_rest_poses();
+		blend_job.output = make_span(output->locals);
+
+		// Blends.
+		if (!blend_job.Run()) {
+			return;
+		}
+	}
+
 
 	void add_animations(Ref<OzzAnimationState> state, Ref<OzzAnimationState> blend_state, float blend_amount) {
 		ozz::animation::BlendingJob::Layer layers[2];
@@ -551,7 +625,7 @@ public:
 		}
 	}
 
-	void load_skeleton() {
+	bool load_skeleton() {
 		// Creates a RawSkeleton.
 		ozz::animation::offline::RawSkeleton raw_skeleton;
 
@@ -563,7 +637,8 @@ public:
 		// The main invalidity reason is the number of joints, which must be lower
 		// than ozz::animation::Skeleton::kMaxJoints.
 		if (!raw_skeleton.Validate()) {
-			ERR_FAIL_MSG("Ozz could not build a valid skeleton!");
+			ERR_PRINT("Ozz could not build a valid skeleton!");
+			return false;
 		}
 
 		// converts the RawSkeleton to a runtime Skeleton.
@@ -575,13 +650,17 @@ public:
 		// This operation will fail and return an empty unique_ptr if the RawSkeleton
 		// isn't valid.
 		skeleton = builder(raw_skeleton);
-		ERR_FAIL_NULL_MSG(skeleton.get(), "Skeleton failed to build");
+		if (skeleton.get() == nullptr) {
+			ERR_PRINT("Skeleton failed to build");
+			return false;
+		}
 
 		// Just load from resource
 		if (bind_poses.size() == 0) {
 			WARN_PRINT("No bind poses provided. Building skin. Consider passing precomputed binds to prevent this computation at runtime.");
 			bind_poses = build_skin();
 		}
+		return true;
 	}
 
 	int find_bone(String bone_name) {
@@ -1028,78 +1107,281 @@ public:
 	}
 
 	static void _bind_methods() {
-		ADD_SETTER(OzzGD, set_names, names, PackedStringArray());
-		ADD_GETTER(OzzGD, get_names);
-		ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "names"), "set_names", "get_names");
-
-		ADD_SETTER(OzzGD, set_parents, parents, PackedInt32Array());
-		ADD_GETTER(OzzGD, get_parents);
-		ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "parents"), "set_parents", "get_parents");
-
-		ADD_SETTER(OzzGD, set_rests, rests, Array());
-		ADD_GETTER(OzzGD, get_rests);
-		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "rests", PROPERTY_HINT_TYPE_STRING,
-							 String::num(Variant::TRANSFORM3D) + "/", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY),
-				"set_rests", "get_rests");
-
-		ADD_SETTER(OzzGD, set_global_rests, global_rests, Array());
-		ADD_GETTER(OzzGD, get_global_rests);
-		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "global_rests", PROPERTY_HINT_TYPE_STRING,
-							 String::num(Variant::TRANSFORM3D) + "/", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY),
-				"set_global_rests", "get_global_rests");
-
-		ADD_SETTER(OzzGD, set_children, children, Array());
-		ADD_GETTER(OzzGD, get_children);
-		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "children", PROPERTY_HINT_TYPE_STRING,
-							 String::num(Variant::PACKED_INT32_ARRAY) + "/", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY),
-				"set_children", "get_children");
-
-		ClassDB::bind_method(D_METHOD("init"), &OzzGD::init);
+		ClassDB::bind_method(D_METHOD("init", "names", "children", "rests", "global_rests", "bind_poses", "binds"), &OzzGD::init);
 		ClassDB::bind_method(D_METHOD("play_animation", "state", "delta", "update_state", "sample_motion", "sample_events"), &OzzGD::play_animation);
-		//ClassDB::bind_method(D_METHOD("new_state", "animation"), &OzzGD::new_state);
+		ClassDB::bind_method(D_METHOD("new_state"), &OzzGD::new_state);
 		ClassDB::bind_method(D_METHOD("new_state_bin", "data"), &OzzGD::new_state_bin);
+		ClassDB::bind_method(D_METHOD("blend2", "output", "a", "b", "blend_amount"), &OzzGD::blend2);
 		ClassDB::bind_method(D_METHOD("blend_animations", "state", "blend_state", "blend_amount"), &OzzGD::blend_animations);
-		ClassDB::bind_method(D_METHOD("load_skeleton"), &OzzGD::load_skeleton);
 		ClassDB::bind_method(D_METHOD("convert_animation_to_ozz", "animation", "extract_motion", "root_bone", "use_scale"), &OzzGD::convert_animation_to_ozz, DEFVAL(NULL), DEFVAL(false), DEFVAL(0), DEFVAL(false));
 		ClassDB::bind_method(D_METHOD("apply_animation_state", "animation_state"), &OzzGD::apply_animation_state);
 		ClassDB::bind_method(D_METHOD("update_skeleton", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton);
 		ClassDB::bind_method(D_METHOD("update_skeleton_interpolated", "delta", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton_interpolated);
-
 		ClassDB::bind_method(D_METHOD("get_tick_time"), &OzzGD::get_tick_time);
 		ClassDB::bind_method(D_METHOD("set_tick_time", "p_tick_time"), &OzzGD::set_tick_time);
-
 		ClassDB::bind_method(D_METHOD("get_bone_model_pose", "bone_id"), &OzzGD::get_bone_model_pose);
-
 		ClassDB::add_property(
 				"OzzGD",
 				PropertyInfo(Variant::FLOAT, "tick_time", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT),
 				"set_tick_time",
 				"get_tick_time");
-
-		ClassDB::bind_method(D_METHOD("get_binds"), &OzzGD::get_binds);
-		ClassDB::bind_method(D_METHOD("set_binds", "p_binds"), &OzzGD::set_binds);
-
-		ClassDB::add_property(
-				"OzzGD",
-				PropertyInfo(Variant::PACKED_INT32_ARRAY, "binds", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT),
-				"set_binds",
-				"get_binds");
-
-		ClassDB::bind_method(D_METHOD("get_bind_poses"), &OzzGD::get_bind_poses);
-		ClassDB::bind_method(D_METHOD("set_bind_poses", "p_bind_poses"), &OzzGD::set_bind_poses);
-
-		ClassDB::add_property(
-				"OzzGD",
-				PropertyInfo(Variant::ARRAY, "bind_poses", PROPERTY_HINT_TYPE_STRING,
-						String::num(Variant::TRANSFORM3D) + "/", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY),
-				"set_bind_poses",
-				"get_bind_poses");
-
 		ClassDB::bind_method(D_METHOD("update_hitboxes", "global_transform", "hitboxes"), &OzzGD::update_hitboxes);
 		ClassDB::bind_method(D_METHOD("update_skeleton_ragdoll", "global_transform", "bodies", "skeleton_rid", "visibility_rid"), &OzzGD::update_skeleton_ragdoll);
-					
 		ClassDB::add_signal("OzzGD", MethodInfo("event_triggered", PropertyInfo(Variant::STRING, "event_name")));
 	}
 };
+
+
+
+struct OzzBlendPoint
+{
+    Ref<OzzAnimationState> animation_state;
+    Vector2 position = Vector2();
+};
+
+typedef struct OzzBlendPoint OzzBlendPoint;
+
+class OzzBlendSpace2D : public RefCounted
+{
+    GDCLASS(OzzBlendSpace2D, RefCounted);
+
+public:
+    std::vector<OzzBlendPoint> blend_points;
+    Array triangles;
+
+    Array get_triangles() { return triangles; }
+    void set_triangles(Array p_triangles) { triangles = p_triangles; }
+
+    OzzBlendSpace2D()
+    {
+        triangles = Array();
+    }
+
+    ~OzzBlendSpace2D()
+    {
+    }
+
+    int add_blend_point(Ref<OzzAnimationState> as, Vector2 p_position)
+    {
+        blend_points.push_back({as, p_position});
+		return blend_points.size()-1;
+    }
+
+	void replace(int index, Ref<OzzAnimationState> as) {
+		if (index >= blend_points.size() || index < 0) return;
+		blend_points[index].animation_state = as;
+	}
+
+    void update(OzzGD* ozz, float delta)
+    {
+        // Update all animations in sync
+        for (const auto &bp : blend_points)
+        {
+            // Advance time but dont update cache for all
+			ozz->play_animation(bp.animation_state, delta, false, false, false);
+        }
+    }
+
+    Ref<OzzAnimationState> get_animation_state(OzzGD* ozz, Vector2 p_position)
+    {
+        p_position.x = CLAMP(p_position.x, -1.0f, 1.0f);
+        p_position.y = CLAMP(p_position.y, -1.0f, 1.0f);
+
+        bool first = false;
+        Vector2 best_point = Vector2(INFINITY, INFINITY);
+        Array best_tri;
+        Array res;
+        float blend_weights[3] = {0.f, 0.f, 0.f};
+
+        // Find blend triangle
+        for (int i = 0; i < triangles.size(); i++)
+        {
+            Array tri = triangles[i];
+            // HANDLE CASE WHERE BLEND_POS IS ON POINT
+            for (int x = 0; x < tri.size(); x++)
+            {
+                int index = (int)tri[x];
+                if (p_position.distance_to(blend_points[index].position) <= CMP_EPSILON)
+                {
+                    Ref<OzzAnimationState> as = blend_points[index].animation_state;
+                    ozz->play_animation(as, 0.0, true);
+                    return as;
+                }
+            }
+
+			if (tri.size() != 3) {
+				continue; // FUTURE: Handle case where we create a simple line?
+			}
+
+            // HANDLE CASE WHERE BLEND_POS IS INSIDE TRIANGLE
+            // Vector2 centroid = (blend_points[(int)tri[0]].position + blend_points[(int)tri[1]].position + blend_points[(int)tri[2]].position) / 3.0;
+            Vector2 dir0; // = centroid.direction_to(blend_points[(int)tri[0]].position) * CMP_EPSILON;
+            Vector2 dir1; // = centroid.direction_to(blend_points[(int)tri[1]].position) * CMP_EPSILON;
+            Vector2 dir2; // = centroid.direction_to(blend_points[(int)tri[2]].position) * CMP_EPSILON;
+            if (Geometry2D::is_point_in_triangle(p_position, blend_points[(int)tri[0]].position + dir0, blend_points[(int)tri[1]].position + dir1, blend_points[(int)tri[2]].position + dir2))
+            {
+
+                Ref<OzzAnimationState> states[3] = {
+                    blend_points[(int)tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
+                    blend_points[(int)tri[1]].animation_state,
+                    blend_points[(int)tri[2]].animation_state};
+
+                Vector2 positions[3] = {
+                    blend_points[(int)tri[0]].position,
+                    blend_points[(int)tri[1]].position,
+                    blend_points[(int)tri[2]].position};
+
+                if (p_position.distance_squared_to(positions[0]) <= CMP_EPSILON)
+                {
+                    ozz->play_animation(states[0], 0.0, true);
+                    return states[0];
+                }
+
+                if (p_position.distance_squared_to(positions[1]) <= CMP_EPSILON)
+                {
+                    ozz->play_animation(states[1], 0.0, true);
+                    return states[1];
+                }
+
+                if (p_position.distance_squared_to(positions[2]) <= CMP_EPSILON)
+                {
+                    ozz->play_animation(states[2], 0.0, true);
+                    return states[2];
+                }
+
+                Vector2 v0 = positions[1] - positions[0];
+                Vector2 v1 = positions[2] - positions[0];
+                Vector2 v2 = p_position - positions[0];
+
+                real_t d00 = v0.dot(v0);
+                real_t d01 = v0.dot(v1);
+                real_t d11 = v1.dot(v1);
+                real_t d20 = v2.dot(v0);
+                real_t d21 = v2.dot(v1);
+                real_t denom = (d00 * d11 - d01 * d01);
+                if (denom == 0)
+                {
+                    ozz->play_animation(states[0], 0.0, true);
+                    return states[0];
+                }
+
+                real_t v = (d11 * d20 - d01 * d21) / denom;
+                real_t w = (d00 * d21 - d01 * d20) / denom;
+                real_t u = 1.0 - v - w;
+
+                ozz->play_animation(states[0], 0.0, true);
+                ozz->play_animation(states[1], 0.0, true);
+                ozz->play_animation(states[2], 0.0, true);
+
+                ozz->blend_animations(states[0], states[1], v);
+                ozz->blend_animations(states[0], states[2], w);
+
+                return states[0];
+            }
+
+            // HANDLE CASE WHERE BLEND_POS IS OUTSIDE OF ALL TRIANGLES
+            // Get closest segment
+            for (int j = 0; j < 3; j++)
+            {
+                Vector2 segment_a = blend_points[(int)tri[j]].position;
+                Vector2 segment_b = blend_points[(int)tri[(j + 1) % 3]].position;
+                Vector2 closest = Geometry2D::get_closest_point_to_segment(p_position, segment_a, segment_b);
+                if (first || closest.distance_to(p_position) < best_point.distance_to(p_position))
+                {
+                    best_point = closest;
+                    first = false;
+                    best_tri = tri;
+                    float d = segment_a.distance_to(segment_b);
+                    if (d == 0.0)
+                    {
+                        blend_weights[j] = 1.0;
+                        blend_weights[(j + 1) % 3] = 0.0;
+                        blend_weights[(j + 2) % 3] = 0.0;
+                    }
+                    else
+                    {
+                        float c = segment_a.distance_to(closest) / d;
+
+                        blend_weights[j] = 1.0 - c;
+                        blend_weights[(j + 1) % 3] = c;
+                        blend_weights[(j + 2) % 3] = 0.0;
+                    }
+                }
+            }
+        }
+
+        // If here, must be outside triangle case
+        Ref<OzzAnimationState> states[3] = {
+            blend_points[(int)best_tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
+            blend_points[(int)best_tri[1]].animation_state,
+            blend_points[(int)best_tri[2]].animation_state};
+
+        if (Math::is_equal_approx(blend_weights[0], 1.0f))
+        {
+            ozz->play_animation(states[0], 0.0, true);
+            return states[0];
+        }
+
+        if (Math::is_equal_approx(blend_weights[1], 1.0f))
+        {
+            ozz->play_animation(states[1], 0.0, true);
+            return states[1];
+        }
+
+        if (Math::is_equal_approx(blend_weights[2], 1.0f))
+        {
+            ozz->play_animation(states[2], 0.0, true);
+            return states[2];
+        }
+
+        Ref<OzzAnimationState> state;
+
+        if (blend_weights[0] > 0.0 && blend_weights[1] > 0.0)
+        {
+            state = states[0];
+            ozz->play_animation(state, 0.0, true);
+            ozz->play_animation(states[1], 0.0, true);
+            ozz->blend_animations(state, states[1], blend_weights[1]);
+        }
+
+        if (blend_weights[0] > 0.0 && blend_weights[2] > 0.0)
+        {
+            state = states[0];
+            ozz->play_animation(state, 0.0, true);
+            ozz->play_animation(states[2], 0.0, true);
+            ozz->blend_animations(state, states[2], blend_weights[2]);
+        }
+
+        if (blend_weights[1] > 0.0 && blend_weights[2] > 0.0)
+        {
+            state = states[1];
+            ozz->play_animation(state, 0.0, true);
+            ozz->play_animation(states[2], 0.0, true);
+            ozz->blend_animations(state, states[2], blend_weights[2]);
+        }
+
+        if (state.is_null())
+        {
+            OS::get_singleton()->printerr("AnimationState is null. I thought all cases were covered? This should never happen!");
+            return states[0];
+        }
+
+        return state;
+    }
+
+    static void _bind_methods()
+    {
+		ClassDB::bind_method(D_METHOD("replace", "index", "animation_state"), &OzzBlendSpace2D::replace);
+        ClassDB::bind_method(D_METHOD("add_blend_point", "animation", "point"), &OzzBlendSpace2D::add_blend_point);
+        ClassDB::bind_method(D_METHOD("get_animation_state", "ozz", "position"), &OzzBlendSpace2D::get_animation_state);
+        ClassDB::bind_method(D_METHOD("update", "ozz", "delta"), &OzzBlendSpace2D::update, DEFVAL(0.f));
+		ClassDB::bind_method(D_METHOD("set_triangles", "triangles"), &OzzBlendSpace2D::set_triangles, DEFVAL(Array()));
+		ClassDB::bind_method(D_METHOD("get_triangles"), &OzzBlendSpace2D::get_triangles);
+        ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "triangles"), "set_triangles", "get_triangles");
+    }
+};
+
+
+
 
 #endif
