@@ -13,8 +13,17 @@ PITFALLS:
 // 	which blends the last pose into the current. See the orange duck post on spring-roll-call
 // 5. Aim offsets
 // 6. mesh space additive
+//	method: add a blend layer has a negative weight to subtract the current pose
+//	normal add: pose A + pose B
+//	mesh add: the delta between pose A and pose B
+//  i..e lets say our regular delta adds 15 degrees. our parent rotates 45 so the final rotation = 45 + 15
+// 	instead lets make our delta 15-45 = -30. then our final rotation is 45 + -30 = 15
+// 7. build delta animation
+//	1. create delta animation using builder either with skeleton reference or first frame
+//	2. each frame of that animation becomes an additive pose in an array 
 
 #include "ozz/animation/offline/animation_builder.h"
+#include "ozz/animation/offline/additive_animation_builder.h"
 #include "ozz/animation/offline/animation_optimizer.h"
 #include "ozz/animation/offline/motion_extractor.h"
 #include "ozz/animation/offline/raw_animation.h"
@@ -23,6 +32,7 @@ PITFALLS:
 #include "ozz/animation/offline/tools/gltf2ozz.h"
 #include "ozz/animation/offline/track_builder.h"
 #include "ozz/animation/offline/track_optimizer.h"
+
 #include "ozz/animation/runtime/animation.h"
 #include "ozz/animation/runtime/blending_job.h"
 #include "ozz/animation/runtime/local_to_model_job.h"
@@ -30,6 +40,7 @@ PITFALLS:
 #include "ozz/animation/runtime/skeleton.h"
 #include "ozz/animation/runtime/track_sampling_job.h"
 #include "ozz/animation/runtime/track_triggering_job.h"
+
 #include "ozz/base/io/archive.h"
 #include "ozz/base/io/stream.h"
 #include "ozz/base/log.h"
@@ -111,7 +122,7 @@ class OzzAnimationState : public RefCounted {
 
 public:
 	// Constructor, default initialization.
-	OzzAnimationState() : weight(1.f), joint_weight_setting(1.f), transform(ozz::math::Float4x4::identity()), factor(1.f) {
+	OzzAnimationState() : weight(1.f), joint_weight_setting(1.f), transform(ozz::math::Float4x4::identity()) {
 	}
 
 	// Playback animation controller. This is a utility class that helps with
@@ -120,9 +131,6 @@ public:
 
 	// Blending weight for the layer.
 	float weight;
-
-	// Multiplied by delta. If negative, reversed
-	float factor;
 
 	// Blending weight_setting setting of the joints of this layer that are
 	// affected
@@ -196,29 +204,33 @@ public:
 		locals.assign(as->locals.begin(), as->locals.end());
 	}
 
+	// duration * factor = true duration
 	float get_duration() { return animation->duration(); }
 
 	void set_weight(float w) { weight = w; }
 	float get_weight() { return weight; }
 
-	void set_factor(float f) { factor = f; }
-	float get_factor() { return factor; }
+	void set_playback_speed(float f) { controller.set_playback_speed(f); }
+	float get_playback_speed() { return controller.playback_speed(); }
+	 
+	// useful for seeking through an animation. After call play animation with delta = 0.0 to update cache
+	void set_time_ratio(float f) { controller.set_time_ratio(f); }
 
 	Transform3D get_transform() {
 		return ozz_to_godot_xform(transform);
 	}
 
 	void set_time_stretch(float p_time_stretch) {
-		factor = animation->duration() * (1.f / p_time_stretch);
+		set_playback_speed(animation->duration() * (1.f / p_time_stretch));
 		// duration * (1 / factor) = time_stretch
 		// duration * (1 / time_stretch) = factor
 	}
 
 	void set_reversed(bool p_reversed) {
 		if (p_reversed) {
-			factor = abs(factor) * -1.f;
+			set_playback_speed(abs(get_playback_speed()) * -1.f);
 		} else {
-			factor = abs(factor);
+			set_playback_speed(abs(get_playback_speed()));
 		}
 	}
 
@@ -226,6 +238,7 @@ public:
 		ClassDB::bind_method(D_METHOD("set_joint_weights", "weights"), &OzzAnimationState::set_joint_weights, DEFVAL(PackedFloat32Array()));
 		ClassDB::bind_method(D_METHOD("get_transform"), &OzzAnimationState::get_transform);
 		ClassDB::bind_method(D_METHOD("get_duration"), &OzzAnimationState::get_duration);
+		ClassDB::bind_method(D_METHOD("set_time_ratio"), &OzzAnimationState::set_time_ratio);
 		ClassDB::bind_method(D_METHOD("copy_pose", "animation_state"), &OzzAnimationState::copy_pose);
 		ClassDB::bind_method(D_METHOD("set_time_stretch", "stretch"), &OzzAnimationState::set_time_stretch, DEFVAL(1.f));
 		ClassDB::bind_method(D_METHOD("set_reversed", "reversed"), &OzzAnimationState::set_reversed, DEFVAL(false));
@@ -233,9 +246,9 @@ public:
 		ADD_SETTER(OzzAnimationState, set_weight, weight, 1.0)
 		ADD_GETTER(OzzAnimationState, get_weight)
 		ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "weight"), "set_weight", "get_weight");
-		ADD_SETTER(OzzAnimationState, set_factor, factor, 1.0)
-		ADD_GETTER(OzzAnimationState, get_factor)
-		ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "factor"), "set_factor", "get_factor");
+		ADD_SETTER(OzzAnimationState, set_playback_speed, "speed", 1.0)
+		ADD_GETTER(OzzAnimationState, get_playback_speed)
+		ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "speed"), "set_playback_speed", "get_playback_speed");
 	}
 };
 
@@ -446,7 +459,7 @@ public:
 			return false;
 		}
 
-		int loops = state->controller.Update(*state->animation, delta * state->factor);
+		int loops = state->controller.Update(*state->animation, delta);
 
 		if (update_cache == false) {
 			return false;
@@ -586,27 +599,39 @@ public:
 		}
 	}
 
+	void add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> a, Ref<OzzAnimationState> b, float blend_amount, bool global) {
+		if (output.is_null() || a.is_null() || b.is_null()) return;
+		ozz::animation::BlendingJob::Layer layers[1];
 
-	void add_animations(Ref<OzzAnimationState> state, Ref<OzzAnimationState> blend_state, float blend_amount) {
-		if (state.is_null() || blend_state.is_null()) return;
-		ozz::animation::BlendingJob::Layer layers[2];
+		layers[0].transform = make_span(a->locals);
+		layers[0].weight = 1.0f; //state->weight;
+		layers[0].joint_weights = make_span(a->joint_weights);
 
-		layers[0].transform = make_span(state->locals);
-		layers[0].weight = state->weight;
-		// Set per-joint weights for the partially blended layer.
-		layers[0].joint_weights = make_span(state->joint_weights);
+		// Mesh space trick
+		// local add = a + b
+		// global add = a + (b - a)
 
-		layers[1].transform = make_span(blend_state->locals);
-		layers[1].weight = blend_state->weight;
-		// Set per-joint weights for the partially blended layer.
-		layers[1].joint_weights = make_span(blend_state->joint_weights);
+		ozz::animation::BlendingJob::Layer additive[2];
+
+		additive[0].transform = make_span(b->locals);
+		additive[0].weight = blend_amount; //blend_state->weight;
+		additive[0].joint_weights = make_span(b->joint_weights);
+
+		if (global) {
+			additive[1].transform = make_span(a->locals);
+			additive[1].weight = -1.f; // subtract pose
+			additive[1].joint_weights = make_span(b->joint_weights);
+		} else {
+			additive[1].weight = 0.f; // skip layer
+		}
 
 		// Setups blending job.
 		ozz::animation::BlendingJob blend_job;
 		blend_job.threshold = threshold;
-		blend_job.additive_layers = layers;
+		blend_job.layers = layers;
+		blend_job.additive_layers = additive;
 		blend_job.rest_pose = skeleton->joint_rest_poses();
-		blend_job.output = make_span(state->locals);
+		blend_job.output = make_span(output->locals);
 
 		// Blends.
 		if (!blend_job.Run()) {
@@ -688,7 +713,7 @@ public:
 	}
 
 	// TODO: Add error logs and error checks
-	PackedByteArray convert_animation_to_ozz(Ref<Animation> animation, bool extract_motion, int root_bone = 0, bool use_scale = false) {
+	PackedByteArray convert_animation_to_ozz(Ref<Animation> animation, bool extract_motion, int root_bone = 0, bool use_scale = false, bool delta = false) {
 		PackedByteArray data;
 		ozz::io::MemoryStream buf;
 		ozz::io::OArchive output(&buf);
@@ -703,6 +728,12 @@ public:
 		if (!raw_animation.Validate()) {
 			ERR_PRINT("Ozz Animation produced invalid animation. Check this code for possible issues");
 			return data;
+		}
+
+		if (delta) { // assumes first frame is reference pose to be delta against
+			ozz::animation::offline::AdditiveAnimationBuilder aab;
+			ozz::animation::offline::RawAnimation original = raw_animation; // assume copy?
+			aab(original, &raw_animation);
 		}
 
 		// converts the RawAnimation to a runtime Animation.
@@ -1127,8 +1158,9 @@ public:
 		ClassDB::bind_method(D_METHOD("new_state"), &OzzGD::new_state);
 		ClassDB::bind_method(D_METHOD("new_state_bin", "data"), &OzzGD::new_state_bin);
 		ClassDB::bind_method(D_METHOD("blend2", "output", "a", "b", "blend_amount"), &OzzGD::blend2);
+		ClassDB::bind_method(D_METHOD("add2", "output", "a", "b", "blend_amount", "global"), &OzzGD::add2);
 		ClassDB::bind_method(D_METHOD("blend_animations", "state", "blend_state", "blend_amount"), &OzzGD::blend_animations);
-		ClassDB::bind_method(D_METHOD("convert_animation_to_ozz", "animation", "extract_motion", "root_bone", "use_scale"), &OzzGD::convert_animation_to_ozz, DEFVAL(NULL), DEFVAL(false), DEFVAL(0), DEFVAL(false));
+		ClassDB::bind_method(D_METHOD("convert_animation_to_ozz", "animation", "extract_motion", "root_bone", "use_scale", "delta"), &OzzGD::convert_animation_to_ozz, DEFVAL(NULL), DEFVAL(false), DEFVAL(0), DEFVAL(false));
 		ClassDB::bind_method(D_METHOD("apply_animation_state", "animation_state"), &OzzGD::apply_animation_state);
 		ClassDB::bind_method(D_METHOD("update_skeleton", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton);
 		ClassDB::bind_method(D_METHOD("update_skeleton_interpolated", "delta", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton_interpolated);
