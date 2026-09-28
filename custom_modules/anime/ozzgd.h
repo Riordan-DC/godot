@@ -316,7 +316,17 @@ public:
 		from_locals.resize(skeleton->num_soa_joints());
 		to_locals.resize(skeleton->num_soa_joints());
 		interpolated_locals.resize(skeleton->num_soa_joints());
+
 		models.resize(skeleton->num_joints());
+
+		ozz::span<const ozz::math::SoaTransform> rests = skeleton->joint_rest_poses();
+		from_locals.assign(rests.begin(), rests.end());
+		to_locals.assign(rests.begin(), rests.end());
+		interpolated_locals.assign(rests.begin(), rests.end());
+		//std::fill(from_locals.begin(), from_locals.end(), ozz::math::SoaTransform::identity());
+		//std::fill(to_locals.begin(), to_locals.end(), ozz::math::SoaTransform::identity());
+		//std::fill(interpolated_locals.begin(), interpolated_locals.end(), ozz::math::SoaTransform::identity());
+
 		std::fill(models.begin(), models.end(), ozz::math::Float4x4::identity());
 
 		return true;
@@ -419,7 +429,8 @@ public:
 		return as;
 	}
 
-	void apply_animation_state(OzzAnimationState *state) {
+	void apply_animation_state(Ref<OzzAnimationState> state) {
+		if (state.is_null()) return;
 		dt = 0.f;
 		if (!started) {
 			memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
@@ -430,6 +441,7 @@ public:
 	}
 
 	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false, bool sample_events = true) {		
+		if (state.is_null()) return false;
 		if (state->animation == nullptr) {
 			return false;
 		}
@@ -523,6 +535,7 @@ public:
 	}
 
 	void blend_animations(Ref<OzzAnimationState> state, Ref<OzzAnimationState> blend_state, float blend_amount) {
+		if (state.is_null() || blend_state.is_null()) return;
 		ozz::animation::BlendingJob::Layer layers[2];
 
 		layers[0].transform = make_span(state->locals);
@@ -549,6 +562,7 @@ public:
 	}
 
 	void blend2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> a, Ref<OzzAnimationState> b, float blend_amount) {
+		if (output.is_null() || a.is_null() || b.is_null()) return;
 		ozz::animation::BlendingJob::Layer layers[2];
 
 		layers[0].transform = make_span(a->locals);
@@ -574,6 +588,7 @@ public:
 
 
 	void add_animations(Ref<OzzAnimationState> state, Ref<OzzAnimationState> blend_state, float blend_amount) {
+		if (state.is_null() || blend_state.is_null()) return;
 		ozz::animation::BlendingJob::Layer layers[2];
 
 		layers[0].transform = make_span(state->locals);
