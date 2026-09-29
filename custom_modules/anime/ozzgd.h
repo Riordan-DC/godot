@@ -625,59 +625,39 @@ public:
 		// to do this it counter acts the parents pose
 
 		if (global) {
-			// additive[1].transform = make_span(a->locals);
-			// additive[1].weight = -1.f; // subtract pose
-			//additive[2].joint_weights = make_span(b->joint_weights);
+			ozz::vector<ozz::math::Float4x4> models_a, models_b;
+			models_a.resize(skeleton->num_joints());
+			models_b.resize(skeleton->num_joints());
 
-			ozz::vector<ozz::math::Float4x4> _models;
-			_models.resize(skeleton->num_joints());
-
-			// Converts from local space to model space matrices.
+			// Converts from local space to model space
 			ozz::animation::LocalToModelJob ltm_job;
 			ltm_job.skeleton = skeleton.get();
 			ltm_job.input = make_span(a->locals);
-			ltm_job.output = make_span(_models);
+			ltm_job.output = make_span(models_a);
+			if (!ltm_job.Run()) {
+				return;
+			}
+			ltm_job.input = make_span(b->locals);
+			ltm_job.output = make_span(models_b);
 			if (!ltm_job.Run()) {
 				return;
 			}
 
 			// convert Float4x4 to SoaTransform
-			ozz::vector<ozz::math::SoaTransform> _models_soa;
-			_models_soa.resize(skeleton->num_soa_joints());
+			ozz::vector<ozz::math::SoaTransform> models_a_soa, models_b_soa;
+			models_a_soa.resize(skeleton->num_soa_joints());
+			models_b_soa.resize(skeleton->num_soa_joints());
 
-			const math::SimdFloat4 w_axis = math::simd_float4::w_axis();
-			const math::SimdFloat4 zero = math::simd_float4::zero();
-			const math::SimdFloat4 one = math::simd_float4::one();
-			for (int i = 0; i < skeleton->num_soa_joints(); ++i) {
-				math::SimdFloat4 translations[4];
-				math::SimdFloat4 scales[4];
-				math::SimdFloat4 rotations[4];
-
-				for (int j = 0; j < 4; ++j) {
-					if (i * 4 + j < skeleton->num_joints()) {
-						const ozz::math::Float4x4 m = _models[i * 4 + j];
-						translations[j] = math::simd_float4::Load3PtrU(&m.translation.x);
-						rotations[j] = math::NormalizeSafe4(math::simd_float4::LoadPtrU(&m.rotation.x), w_axis);
-						scales[j] = math::simd_float4::Load3PtrU(&m.scale.x);
-					} else {
-						translations[j] = zero;
-						rotations[j] = w_axis;
-						scales[j] = one;
-					}
-				}
-				// Fills the SoaTransform structure.
-				math::Transpose4x3(translations,
-						&skeleton->joint_rest_poses_[i].translation.x);
-				math::Transpose4x4(rotations, &skeleton->joint_rest_poses_[i].rotation.x);
-				math::Transpose4x3(scales, &skeleton->joint_rest_poses_[i].scale.x);
-			}
+			_convert_f4x4_to_soa(models_a, models_a_soa);
+			_convert_f4x4_to_soa(models_b, models_b_soa);
 
 			// Compute model space delta
 			ozz::animation::BlendingJob::Layer layers[1];
-			layers[0].transform = make_span(_models_soa);
+			layers[0].transform = make_span(models_b_soa);
 			layers[0].weight = 1.f;
-			ozz::animation::BlendingJob::Layer sub[1];
-			sub[0].transform = make_span(b->locals);
+			// subtract the reference pose
+			ozz::animation::BlendingJob::Layer sub[1]; 
+			sub[0].transform = make_span(models_a_soa);
 			sub[0].weight = -1.f;
 
 			ozz::vector<ozz::math::SoaTransform> delta_b;
@@ -738,6 +718,33 @@ public:
 			if (!add_job.Run()) {
 				return;
 			}
+		}
+	}
+
+	void _convert_f4x4_to_soa(ozz::vector<ozz::math::Float4x4> &in, ozz::vector<ozz::math::SoaTransform>& out) {
+		const ozz::math::SimdFloat4 w_axis = ozz::math::simd_float4::w_axis();
+		const ozz::math::SimdFloat4 zero = ozz::math::simd_float4::zero();
+		const ozz::math::SimdFloat4 one = ozz::math::simd_float4::one();
+		for (int i = 0; i < skeleton->num_soa_joints(); ++i) {
+			ozz::math::SimdFloat4 translations[4];
+			ozz::math::SimdFloat4 scales[4];
+			ozz::math::SimdFloat4 rotations[4];
+
+			for (int j = 0; j < 4; ++j) {
+				int idx = i * 4 + j;
+				if (idx < skeleton->num_joints()) {
+					const ozz::math::Float4x4 m = in[idx];
+					ozz::math::ToAffine(m, &translations[j], &rotations[j], &scales[j]);
+				} else {
+					translations[j] = zero;
+					rotations[j] = w_axis;
+					scales[j] = one;
+				}
+			}
+			// Fills the SoaTransform structure.
+			ozz::math::Transpose4x3(translations, &out[i].translation.x);
+			ozz::math::Transpose4x4(rotations, &out[i].rotation.x);
+			ozz::math::Transpose4x3(scales, &out[i].scale.x);
 		}
 	}
 
