@@ -20,10 +20,11 @@ PITFALLS:
 // 	instead lets make our delta 15-45 = -30. then our final rotation is 45 + -30 = 15
 // 7. build delta animation
 //	1. create delta animation using builder either with skeleton reference or first frame
-//	2. each frame of that animation becomes an additive pose in an array 
+//	2. each frame of that animation becomes an additive pose in an array
+// TODO: Remove first frame of delta animation??
 
-#include "ozz/animation/offline/animation_builder.h"
 #include "ozz/animation/offline/additive_animation_builder.h"
+#include "ozz/animation/offline/animation_builder.h"
 #include "ozz/animation/offline/animation_optimizer.h"
 #include "ozz/animation/offline/motion_extractor.h"
 #include "ozz/animation/offline/raw_animation.h"
@@ -32,7 +33,6 @@ PITFALLS:
 #include "ozz/animation/offline/tools/gltf2ozz.h"
 #include "ozz/animation/offline/track_builder.h"
 #include "ozz/animation/offline/track_optimizer.h"
-
 #include "ozz/animation/runtime/animation.h"
 #include "ozz/animation/runtime/blending_job.h"
 #include "ozz/animation/runtime/local_to_model_job.h"
@@ -40,7 +40,6 @@ PITFALLS:
 #include "ozz/animation/runtime/skeleton.h"
 #include "ozz/animation/runtime/track_sampling_job.h"
 #include "ozz/animation/runtime/track_triggering_job.h"
-
 #include "ozz/base/io/archive.h"
 #include "ozz/base/io/stream.h"
 #include "ozz/base/log.h"
@@ -71,12 +70,12 @@ PITFALLS:
 #include "core/string/ustring.h"
 #include "core/templates/a_hash_map.h"
 #include "core/typedefs.h"
+#include "core/variant/variant.h"
 #include "scene/3d/skeleton_3d.h"
+#include "scene/main/node.h"
 #include "scene/resources/animation.h"
 #include "servers/physics_3d/physics_server_3d.h"
 #include "servers/rendering/rendering_server.h"
-#include "core/variant/variant.h"
-#include "scene/main/node.h"
 //#include "scene/main/scene_tree.h
 
 #include <stdalign.h>
@@ -115,7 +114,6 @@ struct WeightSetupIterator {
 // Blend matrix
 // setup(animations[], width: int)
 // setup_offset(animation, frames: int)
-
 
 class OzzAnimationState : public RefCounted {
 	GDCLASS(OzzAnimationState, RefCounted);
@@ -212,7 +210,7 @@ public:
 
 	void set_playback_speed(float f) { controller.set_playback_speed(f); }
 	float get_playback_speed() { return controller.playback_speed(); }
-	 
+
 	// useful for seeking through an animation. After call play animation with delta = 0.0 to update cache
 	void set_time_ratio(float f) { controller.set_time_ratio(f); }
 
@@ -238,7 +236,7 @@ public:
 		ClassDB::bind_method(D_METHOD("set_joint_weights", "weights"), &OzzAnimationState::set_joint_weights, DEFVAL(PackedFloat32Array()));
 		ClassDB::bind_method(D_METHOD("get_transform"), &OzzAnimationState::get_transform);
 		ClassDB::bind_method(D_METHOD("get_duration"), &OzzAnimationState::get_duration);
-		ClassDB::bind_method(D_METHOD("set_time_ratio"), &OzzAnimationState::set_time_ratio);
+		ClassDB::bind_method(D_METHOD("set_time_ratio", "time"), &OzzAnimationState::set_time_ratio);
 		ClassDB::bind_method(D_METHOD("copy_pose", "animation_state"), &OzzAnimationState::copy_pose);
 		ClassDB::bind_method(D_METHOD("set_time_stretch", "stretch"), &OzzAnimationState::set_time_stretch, DEFVAL(1.f));
 		ClassDB::bind_method(D_METHOD("set_reversed", "reversed"), &OzzAnimationState::set_reversed, DEFVAL(false));
@@ -251,8 +249,6 @@ public:
 		ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "speed"), "set_playback_speed", "get_playback_speed");
 	}
 };
-
-
 
 class OzzGD : public RefCounted {
 	GDCLASS(OzzGD, RefCounted);
@@ -292,13 +288,12 @@ public:
 	}
 
 	bool init(
-		PackedStringArray p_names, 
-		TypedArray<PackedInt32Array> p_children,
-		TypedArray<Transform3D> p_rests, 
-		TypedArray<Transform3D> p_global_rests, 
-		TypedArray<Transform3D> p_bind_poses,
-		PackedInt32Array p_binds
-	) {
+			PackedStringArray p_names,
+			TypedArray<PackedInt32Array> p_children,
+			TypedArray<Transform3D> p_rests,
+			TypedArray<Transform3D> p_global_rests,
+			TypedArray<Transform3D> p_bind_poses,
+			PackedInt32Array p_binds) {
 		if (p_binds.is_empty() || p_names.is_empty() || p_children.is_empty() || p_rests.is_empty() || p_global_rests.is_empty() || p_bind_poses.is_empty()) {
 			ERR_PRINT("OzzGD Init error: One input array is zero. Invalid configuration.");
 			return false;
@@ -443,7 +438,13 @@ public:
 	}
 
 	void apply_animation_state(Ref<OzzAnimationState> state) {
-		if (state.is_null()) return;
+		if (state.is_null()) {
+			return;
+		}
+		if (state->animation->num_tracks() != skeleton->num_joints()) {
+			ERR_PRINT("OzzAnimationState tracks does not equal skeletons joints. Must be for a different rig.");
+			return;
+		}
 		dt = 0.f;
 		if (!started) {
 			memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
@@ -453,8 +454,10 @@ public:
 		memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
 	}
 
-	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false, bool sample_events = true) {		
-		if (state.is_null()) return false;
+	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false, bool sample_events = true) {
+		if (state.is_null()) {
+			return false;
+		}
 		if (state->animation == nullptr) {
 			return false;
 		}
@@ -530,11 +533,11 @@ public:
 				if (!job.Run()) {
 					continue;
 				}
-				
+
 				// Iteratively evaluates all edges.
 				// Edges are lazily evaluated on iterator increments.
 				for (const ozz::animation::TrackTriggeringJob::Iterator end = job.end();
-				iterator != end; ++iterator) {
+						iterator != end; ++iterator) {
 					const ozz::animation::TrackTriggeringJob::Edge &edge = *iterator;
 					if (edge.rising) {
 						String track_name = String(track->name());
@@ -548,7 +551,9 @@ public:
 	}
 
 	void blend_animations(Ref<OzzAnimationState> state, Ref<OzzAnimationState> blend_state, float blend_amount) {
-		if (state.is_null() || blend_state.is_null()) return;
+		if (state.is_null() || blend_state.is_null()) {
+			return;
+		}
 		ozz::animation::BlendingJob::Layer layers[2];
 
 		layers[0].transform = make_span(state->locals);
@@ -575,7 +580,9 @@ public:
 	}
 
 	void blend2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> a, Ref<OzzAnimationState> b, float blend_amount) {
-		if (output.is_null() || a.is_null() || b.is_null()) return;
+		if (output.is_null() || a.is_null() || b.is_null()) {
+			return;
+		}
 		ozz::animation::BlendingJob::Layer layers[2];
 
 		layers[0].transform = make_span(a->locals);
@@ -600,42 +607,137 @@ public:
 	}
 
 	void add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> a, Ref<OzzAnimationState> b, float blend_amount, bool global) {
-		if (output.is_null() || a.is_null() || b.is_null()) return;
-		ozz::animation::BlendingJob::Layer layers[1];
-
-		layers[0].transform = make_span(a->locals);
-		layers[0].weight = 1.0f; //state->weight;
-		layers[0].joint_weights = make_span(a->joint_weights);
-
-		// Mesh space trick
-		// local add = a + b
-		// global add = a + (b - a)
-
-		ozz::animation::BlendingJob::Layer additive[2];
-
-		additive[0].transform = make_span(b->locals);
-		additive[0].weight = blend_amount; //blend_state->weight;
-		additive[0].joint_weights = make_span(b->joint_weights);
-
-		if (global) {
-			additive[1].transform = make_span(a->locals);
-			additive[1].weight = -1.f; // subtract pose
-			additive[1].joint_weights = make_span(b->joint_weights);
-		} else {
-			additive[1].weight = 0.f; // skip layer
+		if (output.is_null() || a.is_null() || b.is_null()) {
+			return;
 		}
 
-		// Setups blending job.
-		ozz::animation::BlendingJob blend_job;
-		blend_job.threshold = threshold;
-		blend_job.layers = layers;
-		blend_job.additive_layers = additive;
-		blend_job.rest_pose = skeleton->joint_rest_poses();
-		blend_job.output = make_span(output->locals);
+		// Mesh space trick
+		// local add: a = a + b * weight
+		// this is all done on LOCALS.
 
-		// Blends.
-		if (!blend_job.Run()) {
-			return;
+		// global cant be done in local space because the
+		// local to model conversion will break it
+		// convert to model space
+		// delta from model space
+		// model delta = model pose - add pose
+
+		// simply put: global ignores parent transforms in addition
+		// to do this it counter acts the parents pose
+
+		if (global) {
+			// additive[1].transform = make_span(a->locals);
+			// additive[1].weight = -1.f; // subtract pose
+			//additive[2].joint_weights = make_span(b->joint_weights);
+
+			ozz::vector<ozz::math::Float4x4> _models;
+			_models.resize(skeleton->num_joints());
+
+			// Converts from local space to model space matrices.
+			ozz::animation::LocalToModelJob ltm_job;
+			ltm_job.skeleton = skeleton.get();
+			ltm_job.input = make_span(a->locals);
+			ltm_job.output = make_span(_models);
+			if (!ltm_job.Run()) {
+				return;
+			}
+
+			// convert Float4x4 to SoaTransform
+			ozz::vector<ozz::math::SoaTransform> _models_soa;
+			_models_soa.resize(skeleton->num_soa_joints());
+
+			const math::SimdFloat4 w_axis = math::simd_float4::w_axis();
+			const math::SimdFloat4 zero = math::simd_float4::zero();
+			const math::SimdFloat4 one = math::simd_float4::one();
+			for (int i = 0; i < skeleton->num_soa_joints(); ++i) {
+				math::SimdFloat4 translations[4];
+				math::SimdFloat4 scales[4];
+				math::SimdFloat4 rotations[4];
+
+				for (int j = 0; j < 4; ++j) {
+					if (i * 4 + j < skeleton->num_joints()) {
+						const ozz::math::Float4x4 m = _models[i * 4 + j];
+						translations[j] = math::simd_float4::Load3PtrU(&m.translation.x);
+						rotations[j] = math::NormalizeSafe4(math::simd_float4::LoadPtrU(&m.rotation.x), w_axis);
+						scales[j] = math::simd_float4::Load3PtrU(&m.scale.x);
+					} else {
+						translations[j] = zero;
+						rotations[j] = w_axis;
+						scales[j] = one;
+					}
+				}
+				// Fills the SoaTransform structure.
+				math::Transpose4x3(translations,
+						&skeleton->joint_rest_poses_[i].translation.x);
+				math::Transpose4x4(rotations, &skeleton->joint_rest_poses_[i].rotation.x);
+				math::Transpose4x3(scales, &skeleton->joint_rest_poses_[i].scale.x);
+			}
+
+			// Compute model space delta
+			ozz::animation::BlendingJob::Layer layers[1];
+			layers[0].transform = make_span(_models_soa);
+			layers[0].weight = 1.f;
+			ozz::animation::BlendingJob::Layer sub[1];
+			sub[0].transform = make_span(b->locals);
+			sub[0].weight = -1.f;
+
+			ozz::vector<ozz::math::SoaTransform> delta_b;
+			delta_b.resize(skeleton->num_soa_joints());
+
+			ozz::animation::BlendingJob delta_job;
+			delta_job.threshold = threshold;
+			delta_job.layers = layers;
+			delta_job.additive_layers = sub;
+			delta_job.rest_pose = skeleton->joint_rest_poses();
+			delta_job.output = make_span(delta_b);
+
+			// Blends.
+			if (!delta_job.Run()) {
+				return;
+			}
+
+			layers[0].transform = make_span(a->locals);
+			layers[0].weight = 1.f;
+
+			ozz::animation::BlendingJob::Layer add[1];
+			add[0].transform = make_span(delta_b);
+			add[0].weight = 1.f;
+
+			// Add local
+			ozz::animation::BlendingJob add_job;
+			add_job.threshold = threshold;
+			add_job.layers = layers;
+			add_job.additive_layers = add;
+			add_job.rest_pose = skeleton->joint_rest_poses();
+			add_job.output = make_span(output->locals);
+
+			// Blends.
+			if (!add_job.Run()) {
+				return;
+			}
+		} else {
+			ozz::animation::BlendingJob::Layer layers[1];
+			layers[0].transform = make_span(a->locals);
+			layers[0].weight = 1.0f; //state->weight;
+			//additive[0].joint_weights = make_span(a->joint_weights);
+
+			ozz::vector<ozz::animation::BlendingJob::Layer> additive;
+			additive.resize(1);
+
+			additive[0].transform = make_span(b->locals);
+			additive[0].weight = blend_amount; //blend_state->weight;
+			//additive[0].joint_weights = make_span(b->joint_weights);
+
+			ozz::animation::BlendingJob add_job;
+			add_job.threshold = threshold;
+			add_job.layers = layers;
+			add_job.additive_layers = make_span(additive);
+			add_job.rest_pose = skeleton->joint_rest_poses();
+			add_job.output = make_span(output->locals);
+
+			// Blends.
+			if (!add_job.Run()) {
+				return;
+			}
 		}
 	}
 
@@ -800,7 +902,6 @@ public:
 		// Event tracks
 		ozz::vector<ozz::animation::offline::RawFloatTrack> raw_event_tracks;
 		for (int i = 0; i < animation->get_track_count(); i++) {
-
 			Animation::TrackType type = animation->track_get_type(i);
 			NodePath path = animation->track_get_path(i);
 			if (type == Animation::TYPE_METHOD) {
@@ -825,7 +926,7 @@ public:
 								frame.ratio = CLAMP(animation->track_get_key_time(i, j) / animation->get_length(), 0.0002f, animation->get_length());
 								ozz::animation::offline::RawTrackKeyframe<float> low;
 								low.value = 0.f;
-								low.ratio = frame.ratio-0.0001f;
+								low.ratio = frame.ratio - 0.0001f;
 								raw_event_track.keyframes.push_back(low);
 								raw_event_track.keyframes.push_back(frame);
 
@@ -847,7 +948,6 @@ public:
 			}
 			output << *event_track.get();
 		}
-		
 
 		buf.Seek(0, ozz::io::MemoryStream::kSet);
 		for (int i = 0; i < buf.Size(); i++) {
@@ -1148,7 +1248,9 @@ public:
 	}
 
 	Transform3D get_bone_model_pose(int bone_id) {
-		if (bone_id < 0 || bone_id > models.size()) return Transform3D();
+		if (bone_id < 0 || bone_id > models.size()) {
+			return Transform3D();
+		}
 		return ozz_to_godot_xform(models[bone_id]);
 	}
 
@@ -1178,257 +1280,227 @@ public:
 	}
 };
 
-
-
-struct OzzBlendPoint
-{
-    Ref<OzzAnimationState> animation_state;
-    Vector2 position = Vector2();
+struct OzzBlendPoint {
+	Ref<OzzAnimationState> animation_state;
+	Vector2 position = Vector2();
 };
 
 typedef struct OzzBlendPoint OzzBlendPoint;
 
-class OzzBlendSpace2D : public RefCounted
-{
-    GDCLASS(OzzBlendSpace2D, RefCounted);
+class OzzBlendSpace2D : public RefCounted {
+	GDCLASS(OzzBlendSpace2D, RefCounted);
 
 public:
-    std::vector<OzzBlendPoint> blend_points;
-    Array triangles;
+	std::vector<OzzBlendPoint> blend_points;
+	Array triangles;
 
-    Array get_triangles() { return triangles; }
-    void set_triangles(Array p_triangles) { triangles = p_triangles; }
+	Array get_triangles() { return triangles; }
+	void set_triangles(Array p_triangles) { triangles = p_triangles; }
 
-    OzzBlendSpace2D()
-    {
-        triangles = Array();
-    }
+	OzzBlendSpace2D() {
+		triangles = Array();
+	}
 
-    ~OzzBlendSpace2D()
-    {
-    }
+	~OzzBlendSpace2D() {
+	}
 
-    int add_blend_point(Ref<OzzAnimationState> as, Vector2 p_position)
-    {
-        blend_points.push_back({as, p_position});
-		return blend_points.size()-1;
-    }
+	int add_blend_point(Ref<OzzAnimationState> as, Vector2 p_position) {
+		blend_points.push_back({ as, p_position });
+		return blend_points.size() - 1;
+	}
 
 	void replace(int index, Ref<OzzAnimationState> as) {
-		if (index >= blend_points.size() || index < 0) return;
+		if (index >= blend_points.size() || index < 0) {
+			return;
+		}
 		blend_points[index].animation_state = as;
 	}
 
-    void update(OzzGD* ozz, float delta)
-    {
-        // Update all animations in sync
-        for (const auto &bp : blend_points)
-        {
-            // Advance time but dont update cache for all
+	void update(OzzGD *ozz, float delta) {
+		// Update all animations in sync
+		for (const auto &bp : blend_points) {
+			// Advance time but dont update cache for all
 			ozz->play_animation(bp.animation_state, delta, false, false, false);
-        }
-    }
+		}
+	}
 
-    Ref<OzzAnimationState> get_animation_state(OzzGD* ozz, Vector2 p_position)
-    {
-        p_position.x = CLAMP(p_position.x, -1.0f, 1.0f);
-        p_position.y = CLAMP(p_position.y, -1.0f, 1.0f);
+	Ref<OzzAnimationState> get_animation_state(OzzGD *ozz, Vector2 p_position) {
+		p_position.x = CLAMP(p_position.x, -1.0f, 1.0f);
+		p_position.y = CLAMP(p_position.y, -1.0f, 1.0f);
 
-        bool first = false;
-        Vector2 best_point = Vector2(INFINITY, INFINITY);
-        Array best_tri;
-        Array res;
-        float blend_weights[3] = {0.f, 0.f, 0.f};
+		bool first = false;
+		Vector2 best_point = Vector2(INFINITY, INFINITY);
+		Array best_tri;
+		Array res;
+		float blend_weights[3] = { 0.f, 0.f, 0.f };
 
-        // Find blend triangle
-        for (int i = 0; i < triangles.size(); i++)
-        {
-            Array tri = triangles[i];
-            // HANDLE CASE WHERE BLEND_POS IS ON POINT
-            for (int x = 0; x < tri.size(); x++)
-            {
-                int index = (int)tri[x];
-                if (p_position.distance_to(blend_points[index].position) <= CMP_EPSILON)
-                {
-                    Ref<OzzAnimationState> as = blend_points[index].animation_state;
-                    ozz->play_animation(as, 0.0, true);
-                    return as;
-                }
-            }
+		// Find blend triangle
+		for (int i = 0; i < triangles.size(); i++) {
+			Array tri = triangles[i];
+			// HANDLE CASE WHERE BLEND_POS IS ON POINT
+			for (int x = 0; x < tri.size(); x++) {
+				int index = (int)tri[x];
+				if (p_position.distance_to(blend_points[index].position) <= CMP_EPSILON) {
+					Ref<OzzAnimationState> as = blend_points[index].animation_state;
+					ozz->play_animation(as, 0.0, true);
+					return as;
+				}
+			}
 
 			if (tri.size() != 3) {
 				continue; // FUTURE: Handle case where we create a simple line?
 			}
 
-            // HANDLE CASE WHERE BLEND_POS IS INSIDE TRIANGLE
-            // Vector2 centroid = (blend_points[(int)tri[0]].position + blend_points[(int)tri[1]].position + blend_points[(int)tri[2]].position) / 3.0;
-            Vector2 dir0; // = centroid.direction_to(blend_points[(int)tri[0]].position) * CMP_EPSILON;
-            Vector2 dir1; // = centroid.direction_to(blend_points[(int)tri[1]].position) * CMP_EPSILON;
-            Vector2 dir2; // = centroid.direction_to(blend_points[(int)tri[2]].position) * CMP_EPSILON;
-            if (Geometry2D::is_point_in_triangle(p_position, blend_points[(int)tri[0]].position + dir0, blend_points[(int)tri[1]].position + dir1, blend_points[(int)tri[2]].position + dir2))
-            {
+			// HANDLE CASE WHERE BLEND_POS IS INSIDE TRIANGLE
+			// Vector2 centroid = (blend_points[(int)tri[0]].position + blend_points[(int)tri[1]].position + blend_points[(int)tri[2]].position) / 3.0;
+			Vector2 dir0; // = centroid.direction_to(blend_points[(int)tri[0]].position) * CMP_EPSILON;
+			Vector2 dir1; // = centroid.direction_to(blend_points[(int)tri[1]].position) * CMP_EPSILON;
+			Vector2 dir2; // = centroid.direction_to(blend_points[(int)tri[2]].position) * CMP_EPSILON;
+			if (Geometry2D::is_point_in_triangle(p_position, blend_points[(int)tri[0]].position + dir0, blend_points[(int)tri[1]].position + dir1, blend_points[(int)tri[2]].position + dir2)) {
+				Ref<OzzAnimationState> states[3] = {
+					blend_points[(int)tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
+					blend_points[(int)tri[1]].animation_state,
+					blend_points[(int)tri[2]].animation_state
+				};
 
-                Ref<OzzAnimationState> states[3] = {
-                    blend_points[(int)tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
-                    blend_points[(int)tri[1]].animation_state,
-                    blend_points[(int)tri[2]].animation_state};
+				Vector2 positions[3] = {
+					blend_points[(int)tri[0]].position,
+					blend_points[(int)tri[1]].position,
+					blend_points[(int)tri[2]].position
+				};
 
-                Vector2 positions[3] = {
-                    blend_points[(int)tri[0]].position,
-                    blend_points[(int)tri[1]].position,
-                    blend_points[(int)tri[2]].position};
+				if (p_position.distance_squared_to(positions[0]) <= CMP_EPSILON) {
+					ozz->play_animation(states[0], 0.0, true);
+					return states[0];
+				}
 
-                if (p_position.distance_squared_to(positions[0]) <= CMP_EPSILON)
-                {
-                    ozz->play_animation(states[0], 0.0, true);
-                    return states[0];
-                }
+				if (p_position.distance_squared_to(positions[1]) <= CMP_EPSILON) {
+					ozz->play_animation(states[1], 0.0, true);
+					return states[1];
+				}
 
-                if (p_position.distance_squared_to(positions[1]) <= CMP_EPSILON)
-                {
-                    ozz->play_animation(states[1], 0.0, true);
-                    return states[1];
-                }
+				if (p_position.distance_squared_to(positions[2]) <= CMP_EPSILON) {
+					ozz->play_animation(states[2], 0.0, true);
+					return states[2];
+				}
 
-                if (p_position.distance_squared_to(positions[2]) <= CMP_EPSILON)
-                {
-                    ozz->play_animation(states[2], 0.0, true);
-                    return states[2];
-                }
+				Vector2 v0 = positions[1] - positions[0];
+				Vector2 v1 = positions[2] - positions[0];
+				Vector2 v2 = p_position - positions[0];
 
-                Vector2 v0 = positions[1] - positions[0];
-                Vector2 v1 = positions[2] - positions[0];
-                Vector2 v2 = p_position - positions[0];
+				real_t d00 = v0.dot(v0);
+				real_t d01 = v0.dot(v1);
+				real_t d11 = v1.dot(v1);
+				real_t d20 = v2.dot(v0);
+				real_t d21 = v2.dot(v1);
+				real_t denom = (d00 * d11 - d01 * d01);
+				if (denom == 0) {
+					ozz->play_animation(states[0], 0.0, true);
+					return states[0];
+				}
 
-                real_t d00 = v0.dot(v0);
-                real_t d01 = v0.dot(v1);
-                real_t d11 = v1.dot(v1);
-                real_t d20 = v2.dot(v0);
-                real_t d21 = v2.dot(v1);
-                real_t denom = (d00 * d11 - d01 * d01);
-                if (denom == 0)
-                {
-                    ozz->play_animation(states[0], 0.0, true);
-                    return states[0];
-                }
+				real_t v = (d11 * d20 - d01 * d21) / denom;
+				real_t w = (d00 * d21 - d01 * d20) / denom;
+				real_t u = 1.0 - v - w;
 
-                real_t v = (d11 * d20 - d01 * d21) / denom;
-                real_t w = (d00 * d21 - d01 * d20) / denom;
-                real_t u = 1.0 - v - w;
+				ozz->play_animation(states[0], 0.0, true);
+				ozz->play_animation(states[1], 0.0, true);
+				ozz->play_animation(states[2], 0.0, true);
 
-                ozz->play_animation(states[0], 0.0, true);
-                ozz->play_animation(states[1], 0.0, true);
-                ozz->play_animation(states[2], 0.0, true);
+				ozz->blend_animations(states[0], states[1], v);
+				ozz->blend_animations(states[0], states[2], w);
 
-                ozz->blend_animations(states[0], states[1], v);
-                ozz->blend_animations(states[0], states[2], w);
+				return states[0];
+			}
 
-                return states[0];
-            }
+			// HANDLE CASE WHERE BLEND_POS IS OUTSIDE OF ALL TRIANGLES
+			// Get closest segment
+			for (int j = 0; j < 3; j++) {
+				Vector2 segment_a = blend_points[(int)tri[j]].position;
+				Vector2 segment_b = blend_points[(int)tri[(j + 1) % 3]].position;
+				Vector2 closest = Geometry2D::get_closest_point_to_segment(p_position, segment_a, segment_b);
+				if (first || closest.distance_to(p_position) < best_point.distance_to(p_position)) {
+					best_point = closest;
+					first = false;
+					best_tri = tri;
+					float d = segment_a.distance_to(segment_b);
+					if (d == 0.0) {
+						blend_weights[j] = 1.0;
+						blend_weights[(j + 1) % 3] = 0.0;
+						blend_weights[(j + 2) % 3] = 0.0;
+					} else {
+						float c = segment_a.distance_to(closest) / d;
 
-            // HANDLE CASE WHERE BLEND_POS IS OUTSIDE OF ALL TRIANGLES
-            // Get closest segment
-            for (int j = 0; j < 3; j++)
-            {
-                Vector2 segment_a = blend_points[(int)tri[j]].position;
-                Vector2 segment_b = blend_points[(int)tri[(j + 1) % 3]].position;
-                Vector2 closest = Geometry2D::get_closest_point_to_segment(p_position, segment_a, segment_b);
-                if (first || closest.distance_to(p_position) < best_point.distance_to(p_position))
-                {
-                    best_point = closest;
-                    first = false;
-                    best_tri = tri;
-                    float d = segment_a.distance_to(segment_b);
-                    if (d == 0.0)
-                    {
-                        blend_weights[j] = 1.0;
-                        blend_weights[(j + 1) % 3] = 0.0;
-                        blend_weights[(j + 2) % 3] = 0.0;
-                    }
-                    else
-                    {
-                        float c = segment_a.distance_to(closest) / d;
+						blend_weights[j] = 1.0 - c;
+						blend_weights[(j + 1) % 3] = c;
+						blend_weights[(j + 2) % 3] = 0.0;
+					}
+				}
+			}
+		}
 
-                        blend_weights[j] = 1.0 - c;
-                        blend_weights[(j + 1) % 3] = c;
-                        blend_weights[(j + 2) % 3] = 0.0;
-                    }
-                }
-            }
-        }
+		// If here, must be outside triangle case
+		Ref<OzzAnimationState> states[3] = {
+			blend_points[(int)best_tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
+			blend_points[(int)best_tri[1]].animation_state,
+			blend_points[(int)best_tri[2]].animation_state
+		};
 
-        // If here, must be outside triangle case
-        Ref<OzzAnimationState> states[3] = {
-            blend_points[(int)best_tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
-            blend_points[(int)best_tri[1]].animation_state,
-            blend_points[(int)best_tri[2]].animation_state};
+		if (Math::is_equal_approx(blend_weights[0], 1.0f)) {
+			ozz->play_animation(states[0], 0.0, true);
+			return states[0];
+		}
 
-        if (Math::is_equal_approx(blend_weights[0], 1.0f))
-        {
-            ozz->play_animation(states[0], 0.0, true);
-            return states[0];
-        }
+		if (Math::is_equal_approx(blend_weights[1], 1.0f)) {
+			ozz->play_animation(states[1], 0.0, true);
+			return states[1];
+		}
 
-        if (Math::is_equal_approx(blend_weights[1], 1.0f))
-        {
-            ozz->play_animation(states[1], 0.0, true);
-            return states[1];
-        }
+		if (Math::is_equal_approx(blend_weights[2], 1.0f)) {
+			ozz->play_animation(states[2], 0.0, true);
+			return states[2];
+		}
 
-        if (Math::is_equal_approx(blend_weights[2], 1.0f))
-        {
-            ozz->play_animation(states[2], 0.0, true);
-            return states[2];
-        }
+		Ref<OzzAnimationState> state;
 
-        Ref<OzzAnimationState> state;
+		if (blend_weights[0] > 0.0 && blend_weights[1] > 0.0) {
+			state = states[0];
+			ozz->play_animation(state, 0.0, true);
+			ozz->play_animation(states[1], 0.0, true);
+			ozz->blend_animations(state, states[1], blend_weights[1]);
+		}
 
-        if (blend_weights[0] > 0.0 && blend_weights[1] > 0.0)
-        {
-            state = states[0];
-            ozz->play_animation(state, 0.0, true);
-            ozz->play_animation(states[1], 0.0, true);
-            ozz->blend_animations(state, states[1], blend_weights[1]);
-        }
+		if (blend_weights[0] > 0.0 && blend_weights[2] > 0.0) {
+			state = states[0];
+			ozz->play_animation(state, 0.0, true);
+			ozz->play_animation(states[2], 0.0, true);
+			ozz->blend_animations(state, states[2], blend_weights[2]);
+		}
 
-        if (blend_weights[0] > 0.0 && blend_weights[2] > 0.0)
-        {
-            state = states[0];
-            ozz->play_animation(state, 0.0, true);
-            ozz->play_animation(states[2], 0.0, true);
-            ozz->blend_animations(state, states[2], blend_weights[2]);
-        }
+		if (blend_weights[1] > 0.0 && blend_weights[2] > 0.0) {
+			state = states[1];
+			ozz->play_animation(state, 0.0, true);
+			ozz->play_animation(states[2], 0.0, true);
+			ozz->blend_animations(state, states[2], blend_weights[2]);
+		}
 
-        if (blend_weights[1] > 0.0 && blend_weights[2] > 0.0)
-        {
-            state = states[1];
-            ozz->play_animation(state, 0.0, true);
-            ozz->play_animation(states[2], 0.0, true);
-            ozz->blend_animations(state, states[2], blend_weights[2]);
-        }
+		if (state.is_null()) {
+			OS::get_singleton()->printerr("AnimationState is null. I thought all cases were covered? This should never happen!");
+			return states[0];
+		}
 
-        if (state.is_null())
-        {
-            OS::get_singleton()->printerr("AnimationState is null. I thought all cases were covered? This should never happen!");
-            return states[0];
-        }
+		return state;
+	}
 
-        return state;
-    }
-
-    static void _bind_methods()
-    {
+	static void _bind_methods() {
 		ClassDB::bind_method(D_METHOD("replace", "index", "animation_state"), &OzzBlendSpace2D::replace);
-        ClassDB::bind_method(D_METHOD("add_blend_point", "animation", "point"), &OzzBlendSpace2D::add_blend_point);
-        ClassDB::bind_method(D_METHOD("get_animation_state", "ozz", "position"), &OzzBlendSpace2D::get_animation_state);
-        ClassDB::bind_method(D_METHOD("update", "ozz", "delta"), &OzzBlendSpace2D::update, DEFVAL(0.f));
+		ClassDB::bind_method(D_METHOD("add_blend_point", "animation", "point"), &OzzBlendSpace2D::add_blend_point);
+		ClassDB::bind_method(D_METHOD("get_animation_state", "ozz", "position"), &OzzBlendSpace2D::get_animation_state);
+		ClassDB::bind_method(D_METHOD("update", "ozz", "delta"), &OzzBlendSpace2D::update, DEFVAL(0.f));
 		ClassDB::bind_method(D_METHOD("set_triangles", "triangles"), &OzzBlendSpace2D::set_triangles, DEFVAL(Array()));
 		ClassDB::bind_method(D_METHOD("get_triangles"), &OzzBlendSpace2D::get_triangles);
-        ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "triangles"), "set_triangles", "get_triangles");
-    }
+		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "triangles"), "set_triangles", "get_triangles");
+	}
 };
-
-
-
 
 #endif
