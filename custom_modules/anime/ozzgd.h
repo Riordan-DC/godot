@@ -220,8 +220,6 @@ public:
 
 	void set_time_stretch(float p_time_stretch) {
 		set_playback_speed(animation->duration() * (1.f / p_time_stretch));
-		// duration * (1 / factor) = time_stretch
-		// duration * (1 / time_stretch) = factor
 	}
 
 	void set_reversed(bool p_reversed) {
@@ -260,6 +258,7 @@ public:
 
 	int bones = 0;
 	PackedStringArray names;
+	PackedStringArray get_names() { return names; }
 	TypedArray<Transform3D> rests;
 	TypedArray<PackedInt32Array> children;
 	PackedInt32Array parents;
@@ -606,8 +605,8 @@ public:
 		}
 	}
 
-	void add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> a, Ref<OzzAnimationState> b, float blend_amount, bool global) {
-		if (output.is_null() || a.is_null() || b.is_null()) {
+	void add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref<OzzAnimationState> add, float blend_amount, bool global) {
+		if (output.is_null() || base.is_null() || add.is_null()) {
 			return;
 		}
 
@@ -624,6 +623,23 @@ public:
 		// simply put: global ignores parent transforms in addition
 		// to do this it counter acts the parents pose
 
+		// model space delta
+		// 1 bone example, ot 2d only
+		// base pose
+		// 30
+		// add pose
+		// 20
+		// normal add
+		// 50
+		// model base pose
+		// 30
+		// model add pose
+		// 20
+		// model delta
+		// 20 - 30 = -10
+		// model add
+		// 20
+
 		if (global) {
 			ozz::vector<ozz::math::Float4x4> models_a, models_b;
 			models_a.resize(skeleton->num_joints());
@@ -632,12 +648,12 @@ public:
 			// Converts from local space to model space
 			ozz::animation::LocalToModelJob ltm_job;
 			ltm_job.skeleton = skeleton.get();
-			ltm_job.input = make_span(a->locals);
+			ltm_job.input = make_span(base->locals);
 			ltm_job.output = make_span(models_a);
 			if (!ltm_job.Run()) {
 				return;
 			}
-			ltm_job.input = make_span(b->locals);
+			ltm_job.input = make_span(add->locals);
 			ltm_job.output = make_span(models_b);
 			if (!ltm_job.Run()) {
 				return;
@@ -675,18 +691,20 @@ public:
 				return;
 			}
 
-			layers[0].transform = make_span(a->locals);
+			layers[0].transform = make_span(base->locals);
 			layers[0].weight = 1.f;
+			layers[0].joint_weights = make_span(base->joint_weights);
 
-			ozz::animation::BlendingJob::Layer add[1];
-			add[0].transform = make_span(delta_b);
-			add[0].weight = 1.f;
+			ozz::animation::BlendingJob::Layer additive[1];
+			additive[0].transform = make_span(delta_b);
+			additive[0].weight = blend_amount;
+			additive[0].joint_weights = make_span(add->joint_weights);
 
 			// Add local
 			ozz::animation::BlendingJob add_job;
 			add_job.threshold = threshold;
 			add_job.layers = layers;
-			add_job.additive_layers = add;
+			add_job.additive_layers = additive;
 			add_job.rest_pose = skeleton->joint_rest_poses();
 			add_job.output = make_span(output->locals);
 
@@ -696,16 +714,16 @@ public:
 			}
 		} else {
 			ozz::animation::BlendingJob::Layer layers[1];
-			layers[0].transform = make_span(a->locals);
-			layers[0].weight = 1.0f; //state->weight;
-			//additive[0].joint_weights = make_span(a->joint_weights);
+			layers[0].transform = make_span(base->locals);
+			layers[0].weight = 1.f; //state->weight;
+			layers[0].joint_weights = make_span(base->joint_weights);
 
 			ozz::vector<ozz::animation::BlendingJob::Layer> additive;
 			additive.resize(1);
 
-			additive[0].transform = make_span(b->locals);
-			additive[0].weight = blend_amount; //blend_state->weight;
-			//additive[0].joint_weights = make_span(b->joint_weights);
+			additive[0].transform = make_span(add->locals);
+			additive[0].weight = blend_amount;
+			additive[0].joint_weights = make_span(add->joint_weights);
 
 			ozz::animation::BlendingJob add_job;
 			add_job.threshold = threshold;
@@ -1264,6 +1282,7 @@ public:
 	static void _bind_methods() {
 		ClassDB::bind_method(D_METHOD("init", "names", "children", "rests", "global_rests", "bind_poses", "binds"), &OzzGD::init);
 		ClassDB::bind_method(D_METHOD("play_animation", "state", "delta", "update_state", "sample_motion", "sample_events"), &OzzGD::play_animation);
+		ClassDB::bind_method(D_METHOD("get_names"), &OzzGD::get_names);
 		ClassDB::bind_method(D_METHOD("new_state"), &OzzGD::new_state);
 		ClassDB::bind_method(D_METHOD("new_state_bin", "data"), &OzzGD::new_state_bin);
 		ClassDB::bind_method(D_METHOD("blend2", "output", "a", "b", "blend_amount"), &OzzGD::blend2);
