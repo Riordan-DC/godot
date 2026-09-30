@@ -23,6 +23,8 @@ PITFALLS:
 //	2. each frame of that animation becomes an additive pose in an array
 // TODO: Remove first frame of delta animation??
 
+#include "utils.h"
+
 #include "ozz/animation/offline/additive_animation_builder.h"
 #include "ozz/animation/offline/animation_builder.h"
 #include "ozz/animation/offline/animation_optimizer.h"
@@ -86,30 +88,6 @@ PITFALLS:
 
 class OzzAnimationState;
 class OzzGD;
-
-// Helper to convert from Ozz Mat4x4 to godot transform3d
-inline Transform3D ozz_to_godot_xform(ozz::math::Float4x4 m) {
-	return Transform3D(
-			ozz::math::GetX(m.cols[0]), ozz::math::GetX(m.cols[1]), ozz::math::GetX(m.cols[2]),
-			ozz::math::GetY(m.cols[0]), ozz::math::GetY(m.cols[1]), ozz::math::GetY(m.cols[2]),
-			ozz::math::GetZ(m.cols[0]), ozz::math::GetZ(m.cols[1]), ozz::math::GetZ(m.cols[2]),
-			ozz::math::GetX(m.cols[3]), ozz::math::GetY(m.cols[3]), ozz::math::GetZ(m.cols[3])
-
-	);
-}
-
-// Helper functor used to set weights while traversing joints hierarchy.
-struct WeightSetupIterator {
-	WeightSetupIterator(ozz::vector<ozz::math::SimdFloat4> *_weights,
-			float _weight_setting) : weights(_weights),
-									 weight_setting(_weight_setting) {}
-	void operator()(int _joint, int) {
-		ozz::math::SimdFloat4 &soa_weight = weights->at(_joint / 4);
-		soa_weight = ozz::math::SetI(soa_weight, ozz::math::simd_float4::Load1(weight_setting), _joint % 4);
-	}
-	ozz::vector<ozz::math::SimdFloat4> *weights;
-	float weight_setting;
-};
 
 // Blend matrix
 // setup(animations[], width: int)
