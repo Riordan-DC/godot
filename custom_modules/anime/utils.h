@@ -76,6 +76,28 @@ struct WeightSetupIterator {
 	float weight_setting;
 };
 
+ozz::math::SoaTransform single_float4x4_to_soa_transform(const ozz::math::Float4x4 mats, ozz::math::SoaTransform soa_transform, int lane) {
+    ozz::math::SimdFloat4 translation;
+    ozz::math::SimdFloat4 rotation;
+    ozz::math::SimdFloat4 scale;
+
+	ozz::math::ToAffine(mats, &translation, &rotation, &scale);
+  
+	soa_transform.translation.x = ozz::math::SetI(soa_transform.translation.x, translation, lane);
+	soa_transform.translation.y = ozz::math::SetI(soa_transform.translation.y, translation, lane);
+	soa_transform.translation.z = ozz::math::SetI(soa_transform.translation.z, translation, lane);
+
+	soa_transform.rotation.x = ozz::math::SetI(soa_transform.rotation.x, rotation, lane);
+	soa_transform.rotation.y = ozz::math::SetI(soa_transform.rotation.y, rotation, lane);
+	soa_transform.rotation.z = ozz::math::SetI(soa_transform.rotation.z, rotation, lane);
+	soa_transform.rotation.w = ozz::math::SetI(soa_transform.rotation.w, rotation, lane);
+
+	soa_transform.scale.x = ozz::math::SetI(soa_transform.scale.x, scale, lane);
+	soa_transform.scale.y = ozz::math::SetI(soa_transform.scale.y, scale, lane);
+	soa_transform.scale.z = ozz::math::SetI(soa_transform.scale.z, scale, lane);
+    return soa_transform;
+}
+
 ozz::math::SoaTransform float4x4_to_soa_transform(const ozz::math::Float4x4 mats[4]) {
     ozz::math::SimdFloat4 translations[4];
     ozz::math::SimdFloat4 rotations[4];
@@ -90,19 +112,9 @@ ozz::math::SoaTransform float4x4_to_soa_transform(const ozz::math::Float4x4 mats
     ozz::math::SoaTransform soa_transform;
     
     // Pack translations (x, y, z)
-    soa_transform.translation.x = ozz::math::simd_float4::Load(translations[0].x, translations[1].x, translations[2].x, translations[3].x); // Or transpose lanes accordingly
-    soa_transform.translation.y = ozz::math::simd_float4::Load(translations[0].y, translations[1].y, translations[2].y, translations[3].y); // Or transpose lanes accordingly
-    soa_transform.translation.z = ozz::math::simd_float4::Load(translations[0].z, translations[1].z, translations[2].z, translations[3].z); // Or transpose lanes accordingly
-    
-	soa_transform.rotation.x = ozz::math::simd_float4::Load(rotations[0].x, rotations[1].x, rotations[2].x, rotations[3].x); // Or transpose lanes accordingly
-    soa_transform.rotation.y = ozz::math::simd_float4::Load(rotations[0].y, rotations[1].y, rotations[2].y, rotations[3].y); // Or transpose lanes accordingly
-    soa_transform.rotation.z = ozz::math::simd_float4::Load(rotations[0].z, rotations[1].z, rotations[2].z, rotations[3].z); // Or transpose lanes accordingly
-    soa_transform.rotation.w = ozz::math::simd_float4::Load(rotations[0].w, rotations[1].w, rotations[2].w, rotations[3].w); // Or transpose lanes accordingly
-	
-	soa_transform.scale.x = ozz::math::simd_float4::Load(scales[0].x, scales[1].x, scales[2].x, scales[3].x); // Or transpose lanes accordingly
-    soa_transform.scale.y = ozz::math::simd_float4::Load(scales[0].y, scales[1].y, scales[2].y, scales[3].y); // Or transpose lanes accordingly
-    soa_transform.scale.z = ozz::math::simd_float4::Load(scales[0].z, scales[1].z, scales[2].z, scales[3].z); // Or transpose lanes accordingly
-
+	ozz::math::Transpose4x3(translations, &soa_transform.translation.x);
+	ozz::math::Transpose4x4(rotations, &soa_transform.rotation.x); // or rotation.x/y/z/w loading
+	ozz::math::Transpose4x3(scales, &soa_transform.scale.x);
     return soa_transform;
 }
 
