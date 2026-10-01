@@ -78,7 +78,6 @@ PITFALLS:
 #include "scene/resources/animation.h"
 #include "servers/physics_3d/physics_server_3d.h"
 #include "servers/rendering/rendering_server.h"
-//#include "scene/main/scene_tree.h
 
 #include <stdalign.h>
 
@@ -86,21 +85,18 @@ PITFALLS:
 #include <unordered_map>
 #include <vector>
 
+#ifdef DEBUG_ENABLED
 // Turn off optimisation for debugging
 #pragma optimize("", off)
+#endif
 
 class OzzAnimationState;
 class OzzGD;
-
-// Blend matrix
-// setup(animations[], width: int)
-// setup_offset(animation, frames: int)
 
 class OzzAnimationState : public RefCounted {
 	GDCLASS(OzzAnimationState, RefCounted);
 
 public:
-	// Constructor, default initialization.
 	OzzAnimationState() : weight(1.f), joint_weight_setting(1.f), transform(ozz::math::Float4x4::identity()) {
 	}
 
@@ -126,7 +122,6 @@ public:
 	ozz::vector<ozz::math::SoaTransform> locals;
 
 	// Buffer of model space matrices.
-	// TODO: 1 array in OzzGD
 	ozz::vector<ozz::math::Float4x4> models;
 
 	// Per-joint weights used to define the partial animation mask. Allows to
@@ -262,10 +257,7 @@ public:
 	// For curving root motion animations
 	float angular_velocity = 0.f;
 
-	OzzGD() {
-		// SceneTree* st = owner->get_tree();
-		// st->
-	}
+	OzzGD() {}
 
 	bool init(
 			PackedStringArray p_names,
@@ -311,10 +303,7 @@ public:
 		from_locals.assign(rests.begin(), rests.end());
 		to_locals.assign(rests.begin(), rests.end());
 		interpolated_locals.assign(rests.begin(), rests.end());
-		//std::fill(from_locals.begin(), from_locals.end(), ozz::math::SoaTransform::identity());
-		//std::fill(to_locals.begin(), to_locals.end(), ozz::math::SoaTransform::identity());
-		//std::fill(interpolated_locals.begin(), interpolated_locals.end(), ozz::math::SoaTransform::identity());
-
+		// todo: models should be initialised to global rests
 		std::fill(models.begin(), models.end(), ozz::math::Float4x4::identity());
 
 		return true;
@@ -586,115 +575,21 @@ public:
 		}
 	}
 
-	void add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref<OzzAnimationState> add, float blend_amount, bool global = false) {
+	void add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref<OzzAnimationState> add, float blend_amount, int global_bone = -1) {
 		if (output.is_null() || base.is_null() || add.is_null()) {
 			return;
 		}
 
-		// Mesh space trick
-		// local add: a = a + b * weight
-		// this is all done on LOCALS.
-
-		// global cant be done in local space because the
-		// local to model conversion will break it
-		// convert to model space
-		// delta from model space
-		// model delta = model pose - add pose
-
-		// simply put: global ignores parent transforms in addition
-		// to do this it counter acts the parents pose
-
-		// mesh space rotation ONLY
-		// mesh space is SUPER expensive because we need to convert to model space before blend/add
-
-		if (global) {
-			ozz::vector<ozz::math::Float4x4> base_models, models_b;
-			base_models.resize(skeleton->num_joints());
-			models_b.resize(skeleton->num_joints());
-
+		if (global_bone > -1) {
 			// Converts from local space to model space
+			ozz::vector<ozz::math::Float4x4> base_models;
+			base_models.resize(skeleton->num_joints());
 			ozz::animation::LocalToModelJob ltm_job;
 			ltm_job.skeleton = skeleton.get();
 			ltm_job.input = make_span(base->locals);
 			ltm_job.output = make_span(base_models);
-			if (!ltm_job.Run()) {
-				return;
-			}
-			// ltm_job.input = make_span(add->locals);
-			// ltm_job.output = make_span(models_b);
-			// if (!ltm_job.Run()) {
-			// 	return;
-			// }
+			if (!ltm_job.Run()) return;
 
-			// convert Float4x4 to SoaTransform
-			// ozz::vector<ozz::math::SoaTransform> soa_base_models, models_b_soa;
-			// soa_base_models.resize(skeleton->num_soa_joints());
-			// models_b_soa.resize(skeleton->num_soa_joints());
-
-			// Also zeros out translation
-			// _convert_f4x4_to_soa(base_models, soa_base_models, true);
-			// _convert_f4x4_to_soa(models_b, models_b_soa, true);
-
-			// Compute model space delta
-			// nullify model pose
-			// delta = base - reference
-			// testing if base pose is joint rests
-
-			// I want the local pose of base to be such that when 
-			// local to model is done, it becomes the rest pose.
-			// The current pose of base is anything.
-			// in model space we find the delta that will bring the
-			// pose to its rest.
-			// delta = pose * inv ref
-			// where:
-			// pose = identity (or rest?)
-			// ref = current pose
-
-			// ozz::vector<ozz::math::SoaTransform> identity;
-			// identity.resize(skeleton->num_soa_joints());
-			// std::fill(identity.begin(), identity.end(), ozz::math::SoaTransform::identity());
-			//make_span(skeleton->joint_rest_poses());
-			// for (int i = 0; i < skeleton->num_soa_joints(); i++) {
-			// 	output->locals[i].rotation = ozz::math::Conjugate(ozz::math::Normalize(models_a_soa[i].rotation));
-			// }
-
-			// ozz::vector<ozz::math::SoaTransform> sub_locals = delta_b;
-			// for (int i = 0; i < skeleton->num_soa_joints(); i++) {
-			// 	sub_locals[i].translation = ozz::math::SoaFloat3::zero();
-			// }
-			
-			// Subtract the rest poses from the model poses
-			// the goal here is to isolate the model space pose
-			// ozz::vector<ozz::math::SoaTransform> delta;
-			// delta.resize(skeleton->num_soa_joints());
-			// ozz::animation::BlendingJob::Layer layers2[1];
-			// layers2[0].transform = make_span(base_models);
-			// layers2[0].weight = 1.0f;
-			// ozz::animation::BlendingJob::Layer additive2[1];
-			// additive2[0].transform = make_span(skeleton->joint_rest_poses());
-			// additive2[0].weight = -1.0f;
-			// ozz::animation::BlendingJob delta_job;
-			// delta_job.threshold = threshold;
-			// delta_job.layers = layers2;
-			// delta_job.additive_layers = additive2;
-			// delta_job.rest_pose = skeleton->joint_rest_poses();
-			// delta_job.output = make_span(delta);
-			// if (!delta_job.Run()) return;
-
-			// ozz::vector<ozz::math::SoaTransform> sub_locals = delta_b;
-			// for (int i = 0; i < skeleton->num_soa_joints(); i++) {
-			// 	sub_locals[i].translation = ozz::math::SoaFloat3::zero();
-			// }
-
-			// set joint 2 (spine) to the inverse of its parent in model space
-			// lets keep it simple. replace a whole soaTransform
-			// local to model equation:
-			// model pose = local pose * parent model pose
-			PackedInt32Array targets;
-			targets.append(2);
-			targets.append(3);
-			targets.append(4);
-			targets.append(5);
 			ozz::span<const int16_t> parents = skeleton->joint_parents();
 			for (int i = 0; i < skeleton->num_joints(); i++) {
 				int block = i / 4;
@@ -702,7 +597,7 @@ public:
 
 				int parent = parents[i];
 
-				if (i == targets[0]) {
+				if (i == global_bone) {
 					if (parent == ozz::animation::Skeleton::kNoParent) {
 						continue;
 					} else {
@@ -712,10 +607,16 @@ public:
 						ozz::math::Quaternion inv_parent_rotation = ozz::math::Conjugate(parent_model_rotation);
 						
 						// 3. Define your desired absolute model space rotation (e.g., Identity for no rotation)
-						Transform3D global_rest = global_rests[i];
-						Quaternion gq = global_rest.basis.get_rotation_quaternion();
-						ozz::math::Quaternion desired_model_rotation = ozz::math::Quaternion(gq.x, gq.y, gq.z, gq.w); //ozz::math::Quaternion::identity();
-						
+						// ozz::math::SoaTransform goal_transform = add->locals[block];
+						// float* gx = reinterpret_cast<float*>(&goal_transform.rotation.x);
+						// float* gy = reinterpret_cast<float*>(&goal_transform.rotation.y);
+						// float* gz = reinterpret_cast<float*>(&goal_transform.rotation.z);
+						// float* gw = reinterpret_cast<float*>(&goal_transform.rotation.w);
+						Transform3D global_rest = rests[i];
+						Quaternion q = global_rest.basis.get_rotation_quaternion();
+						// ozz::math::Quaternion desired_model_rotation = ozz::math::Quaternion(gx[lane], gy[lane], gz[lane], gw[lane]);
+						ozz::math::Quaternion desired_model_rotation = ozz::math::Quaternion(q.x, q.y, q.z, q.w);
+
 						// 4. Calculate the corrected local rotation
 						// Note: ozz-animation quaternion multiplication order is Left * Right
 						ozz::math::Quaternion corrected_local_rotation = inv_parent_rotation * desired_model_rotation;
@@ -731,45 +632,43 @@ public:
 						pz[lane] = corrected_local_rotation.z;
 						pw[lane] = corrected_local_rotation.w;	
 					}
-				} else if (targets.has(i)) {
-					// others just get their rest pose
-					ozz::math::SoaTransform rest = skeleton->joint_rest_poses()[block];
-	
-					float* px = reinterpret_cast<float*>(&output->locals[block].rotation.x);
-					float* py = reinterpret_cast<float*>(&output->locals[block].rotation.y);
-					float* pz = reinterpret_cast<float*>(&output->locals[block].rotation.z);
-					float* pw = reinterpret_cast<float*>(&output->locals[block].rotation.w);
-
-					float* rx = reinterpret_cast<float*>(&rest.rotation.x);
-					float* ry = reinterpret_cast<float*>(&rest.rotation.y);
-					float* rz = reinterpret_cast<float*>(&rest.rotation.z);
-					float* rw = reinterpret_cast<float*>(&rest.rotation.w);
-
-					// Overwrite the specific lane
-					px[lane] = rx[lane];
-					py[lane] = ry[lane];
-					pz[lane] = rz[lane];
-					pw[lane] = rw[lane];	
 				}
+				// else if (targets.has(i)) {
+				// 	// others just get their rest pose
+				// 	ozz::math::SoaTransform goal = add->locals[block];
+	
+				// 	float* px = reinterpret_cast<float*>(&output->locals[block].rotation.x);
+				// 	float* py = reinterpret_cast<float*>(&output->locals[block].rotation.y);
+				// 	float* pz = reinterpret_cast<float*>(&output->locals[block].rotation.z);
+				// 	float* pw = reinterpret_cast<float*>(&output->locals[block].rotation.w);
 
+				// 	float* rx = reinterpret_cast<float*>(&goal.rotation.x);
+				// 	float* ry = reinterpret_cast<float*>(&goal.rotation.y);
+				// 	float* rz = reinterpret_cast<float*>(&goal.rotation.z);
+				// 	float* rw = reinterpret_cast<float*>(&goal.rotation.w);
+
+				// 	px[lane] = rx[lane];
+				// 	py[lane] = ry[lane];
+				// 	pz[lane] = rz[lane];
+				// 	pw[lane] = rw[lane];	
+				// }
 			}
 
-			// ozz::animation::BlendingJob::Layer blend_layers[1];
-			// blend_layers[0].transform = make_span(base->locals);
-			// blend_layers[0].weight = 1.f;
+			ozz::animation::BlendingJob::Layer blend_layers[2];
+			blend_layers[0].transform = make_span(base->locals);
+			blend_layers[0].weight = 1.f;
 			// blend_layers[0].joint_weights = make_span(base->joint_weights);
 			// ozz::animation::BlendingJob::Layer additive[1];
-			// additive[0].transform = make_span(base_models);
-			// additive[0].weight = -blend_amount;
-			// additive[0].joint_weights = make_span(add->joint_weights);
-			// ozz::animation::BlendingJob add_job;
-			// add_job.threshold = threshold;
-			// add_job.layers = blend_layers;
+			blend_layers[1].transform = make_span(add->locals);
+			blend_layers[1].weight = blend_amount;
+			blend_layers[1].joint_weights = make_span(add->joint_weights);
+			ozz::animation::BlendingJob add_job;
+			add_job.threshold = threshold;
+			add_job.layers = blend_layers;
 			// add_job.additive_layers = additive;
-			// add_job.rest_pose = skeleton->joint_rest_poses();
-			// add_job.output = make_span(output->locals);
-			// // output->locals.assign(skeleton->joint_rest_poses().begin(), skeleton->joint_rest_poses().end());
-			// add_job.Run();
+			add_job.rest_pose = skeleton->joint_rest_poses();
+			add_job.output = make_span(output->locals);
+			add_job.Run();
 		} else {
 			ozz::animation::BlendingJob::Layer layers[1];
 			layers[0].transform = make_span(base->locals);
@@ -1347,7 +1246,7 @@ public:
 		ClassDB::bind_method(D_METHOD("new_state"), &OzzGD::new_state);
 		ClassDB::bind_method(D_METHOD("new_state_bin", "data"), &OzzGD::new_state_bin);
 		ClassDB::bind_method(D_METHOD("blend2", "output", "a", "b", "blend_amount"), &OzzGD::blend2);
-		ClassDB::bind_method(D_METHOD("add2", "output", "a", "b", "blend_amount", "global"), &OzzGD::add2, DEFVAL(false));
+		ClassDB::bind_method(D_METHOD("add2", "output", "a", "b", "blend_amount", "global"), &OzzGD::add2, DEFVAL(-1));
 		ClassDB::bind_method(D_METHOD("blend_animations", "state", "blend_state", "blend_amount"), &OzzGD::blend_animations);
 		ClassDB::bind_method(D_METHOD("convert_animation_to_ozz", "animation", "extract_motion", "root_bone", "use_scale", "delta"), &OzzGD::convert_animation_to_ozz, DEFVAL(NULL), DEFVAL(false), DEFVAL(0), DEFVAL(false));
 		ClassDB::bind_method(D_METHOD("apply_animation_state", "animation_state"), &OzzGD::apply_animation_state);
