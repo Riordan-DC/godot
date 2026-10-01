@@ -688,6 +688,13 @@ public:
 
 			// set joint 2 (spine) to the inverse of its parent in model space
 			// lets keep it simple. replace a whole soaTransform
+			// local to model equation:
+			// model pose = local pose * parent model pose
+			PackedInt32Array targets;
+			targets.append(2);
+			targets.append(3);
+			targets.append(4);
+			targets.append(5);
 			ozz::span<const int16_t> parents = skeleton->joint_parents();
 			for (int i = 0; i < skeleton->num_joints(); i++) {
 				int block = i / 4;
@@ -695,13 +702,56 @@ public:
 
 				int parent = parents[i];
 
-				if (parent == ozz::animation::Skeleton::kNoParent) {
-					continue;
-				} else {
-					ozz::math::Float4x4 parent_model_inv = ozz::math::Invert(base_models[parent]);
-					output->locals[block] = single_float4x4_to_soa_transform(parent_model_inv, output->locals[block], lane);
+				if (i == targets[0]) {
+					if (parent == ozz::animation::Skeleton::kNoParent) {
+						continue;
+					} else {
+						ozz::math::Float4x4 parent_model_matrix = base_models[parent]; //ozz::math::Invert(base_models[parent]);
+						ozz::math::SimdFloat4 r = ozz::math::ToQuaternion(parent_model_matrix);
+						ozz::math::Quaternion parent_model_rotation = ozz::math::Quaternion(r.x, r.y, r.z, r.w);
+						ozz::math::Quaternion inv_parent_rotation = ozz::math::Conjugate(parent_model_rotation);
+						
+						// 3. Define your desired absolute model space rotation (e.g., Identity for no rotation)
+						Transform3D global_rest = global_rests[i];
+						Quaternion gq = global_rest.basis.get_rotation_quaternion();
+						ozz::math::Quaternion desired_model_rotation = ozz::math::Quaternion(gq.x, gq.y, gq.z, gq.w); //ozz::math::Quaternion::identity();
+						
+						// 4. Calculate the corrected local rotation
+						// Note: ozz-animation quaternion multiplication order is Left * Right
+						ozz::math::Quaternion corrected_local_rotation = inv_parent_rotation * desired_model_rotation;
+		
+						float* px = reinterpret_cast<float*>(&output->locals[block].rotation.x);
+						float* py = reinterpret_cast<float*>(&output->locals[block].rotation.y);
+						float* pz = reinterpret_cast<float*>(&output->locals[block].rotation.z);
+						float* pw = reinterpret_cast<float*>(&output->locals[block].rotation.w);
+	
+						// Overwrite the specific lane
+						px[lane] = corrected_local_rotation.x;
+						py[lane] = corrected_local_rotation.y;
+						pz[lane] = corrected_local_rotation.z;
+						pw[lane] = corrected_local_rotation.w;	
+					}
+				} else if (targets.has(i)) {
+					// others just get their rest pose
+					ozz::math::SoaTransform rest = skeleton->joint_rest_poses()[block];
+	
+					float* px = reinterpret_cast<float*>(&output->locals[block].rotation.x);
+					float* py = reinterpret_cast<float*>(&output->locals[block].rotation.y);
+					float* pz = reinterpret_cast<float*>(&output->locals[block].rotation.z);
+					float* pw = reinterpret_cast<float*>(&output->locals[block].rotation.w);
 
+					float* rx = reinterpret_cast<float*>(&rest.rotation.x);
+					float* ry = reinterpret_cast<float*>(&rest.rotation.y);
+					float* rz = reinterpret_cast<float*>(&rest.rotation.z);
+					float* rw = reinterpret_cast<float*>(&rest.rotation.w);
+
+					// Overwrite the specific lane
+					px[lane] = rx[lane];
+					py[lane] = ry[lane];
+					pz[lane] = rz[lane];
+					pw[lane] = rw[lane];	
 				}
+
 			}
 
 			// ozz::animation::BlendingJob::Layer blend_layers[1];
