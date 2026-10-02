@@ -46,20 +46,23 @@ inline Transform3D ozz_to_godot_xform(ozz::math::Float4x4 m) {
 
 inline ozz::math::Float4x4 godot_to_ozz(Transform3D m) {
 	ozz::math::Float4x4 r;
-	r.cols[0].x = m.basis.rows[0].x;
-	r.cols[0].y = m.basis.rows[1].x;
-	r.cols[0].z = m.basis.rows[2].x;
-	r.cols[1].x = m.basis.rows[0].y;
-	r.cols[1].y = m.basis.rows[1].y;
-	r.cols[1].z = m.basis.rows[2].y;
-	r.cols[2].x = m.basis.rows[0].z;
-	r.cols[2].y = m.basis.rows[1].z;
-	r.cols[2].z = m.basis.rows[2].z;
-
-	r.cols[3].x = m.origin.x;
-	r.cols[3].y = m.origin.y;
-	r.cols[3].z = m.origin.z;
-	r.cols[3].w = 1.f;
+	float* c1 = reinterpret_cast<float*>(&r.cols[0]);
+	c1[0] = m.basis.rows[0].x;
+	c1[1] = m.basis.rows[1].x;
+	c1[2] = m.basis.rows[2].x;
+	float* c2 = reinterpret_cast<float*>(&r.cols[1]);
+	c2[0] = m.basis.rows[0].y;
+	c2[1] = m.basis.rows[1].y;
+	c2[2] = m.basis.rows[2].y;
+	float* c3 = reinterpret_cast<float*>(&r.cols[0]);
+	c3[0] = m.basis.rows[0].z;
+	c3[1] = m.basis.rows[1].z;
+	c3[2] = m.basis.rows[2].z;
+	float* c4 = reinterpret_cast<float*>(&r.cols[0]);
+	c4[0] = m.origin.x;
+	c4[1] = m.origin.y;
+	c4[2] = m.origin.z;
+	c4[3] = 1.f;
 	return r;
 }
 

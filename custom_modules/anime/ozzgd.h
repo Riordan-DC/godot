@@ -527,12 +527,10 @@ public:
 
 		layers[0].transform = make_span(state->locals);
 		layers[0].weight = 1.0f - blend_amount; //state->weight;
-		// Set per-joint weights for the partially blended layer.
 		layers[0].joint_weights = make_span(state->joint_weights);
 
 		layers[1].transform = make_span(blend_state->locals);
 		layers[1].weight = blend_amount; //blend_state->weight;
-		// Set per-joint weights for the partially blended layer.
 		layers[1].joint_weights = make_span(blend_state->joint_weights);
 
 		// Setups blending job.
@@ -603,7 +601,8 @@ public:
 					} else {
 						ozz::math::Float4x4 parent_model_matrix = base_models[parent]; //ozz::math::Invert(base_models[parent]);
 						ozz::math::SimdFloat4 r = ozz::math::ToQuaternion(parent_model_matrix);
-						ozz::math::Quaternion parent_model_rotation = ozz::math::Quaternion(r.x, r.y, r.z, r.w);
+						float* rp = reinterpret_cast<float*>(&r);
+						ozz::math::Quaternion parent_model_rotation = ozz::math::Quaternion(rp[0], rp[1], rp[2], rp[3]);
 						ozz::math::Quaternion inv_parent_rotation = ozz::math::Conjugate(parent_model_rotation);
 						
 						// 3. Define your desired absolute model space rotation (e.g., Identity for no rotation)
@@ -614,7 +613,6 @@ public:
 						// float* gw = reinterpret_cast<float*>(&goal_transform.rotation.w);
 						Transform3D global_rest = rests[i];
 						Quaternion q = global_rest.basis.get_rotation_quaternion();
-						// ozz::math::Quaternion desired_model_rotation = ozz::math::Quaternion(gx[lane], gy[lane], gz[lane], gw[lane]);
 						ozz::math::Quaternion desired_model_rotation = ozz::math::Quaternion(q.x, q.y, q.z, q.w);
 
 						// 4. Calculate the corrected local rotation
@@ -633,39 +631,18 @@ public:
 						pw[lane] = corrected_local_rotation.w;	
 					}
 				}
-				// else if (targets.has(i)) {
-				// 	// others just get their rest pose
-				// 	ozz::math::SoaTransform goal = add->locals[block];
-	
-				// 	float* px = reinterpret_cast<float*>(&output->locals[block].rotation.x);
-				// 	float* py = reinterpret_cast<float*>(&output->locals[block].rotation.y);
-				// 	float* pz = reinterpret_cast<float*>(&output->locals[block].rotation.z);
-				// 	float* pw = reinterpret_cast<float*>(&output->locals[block].rotation.w);
-
-				// 	float* rx = reinterpret_cast<float*>(&goal.rotation.x);
-				// 	float* ry = reinterpret_cast<float*>(&goal.rotation.y);
-				// 	float* rz = reinterpret_cast<float*>(&goal.rotation.z);
-				// 	float* rw = reinterpret_cast<float*>(&goal.rotation.w);
-
-				// 	px[lane] = rx[lane];
-				// 	py[lane] = ry[lane];
-				// 	pz[lane] = rz[lane];
-				// 	pw[lane] = rw[lane];	
-				// }
 			}
 
 			ozz::animation::BlendingJob::Layer blend_layers[2];
 			blend_layers[0].transform = make_span(base->locals);
 			blend_layers[0].weight = 1.f;
-			// blend_layers[0].joint_weights = make_span(base->joint_weights);
-			// ozz::animation::BlendingJob::Layer additive[1];
+			blend_layers[0].joint_weights = make_span(base->joint_weights);
 			blend_layers[1].transform = make_span(add->locals);
 			blend_layers[1].weight = blend_amount;
 			blend_layers[1].joint_weights = make_span(add->joint_weights);
 			ozz::animation::BlendingJob add_job;
 			add_job.threshold = threshold;
 			add_job.layers = blend_layers;
-			// add_job.additive_layers = additive;
 			add_job.rest_pose = skeleton->joint_rest_poses();
 			add_job.output = make_span(output->locals);
 			add_job.Run();
@@ -1277,6 +1254,10 @@ class OzzBlendSpace2D : public RefCounted {
 	GDCLASS(OzzBlendSpace2D, RefCounted);
 
 public:
+	Ref<OzzAnimationState> output_pose;
+
+	Ref<OzzAnimationState> get_pose() { return output_pose; }
+
 	std::vector<OzzBlendPoint> blend_points;
 	Array triangles;
 
@@ -1288,6 +1269,10 @@ public:
 	}
 
 	~OzzBlendSpace2D() {
+	}
+
+	void init(OzzGD* ozz) {
+		output_pose = ozz->new_state();
 	}
 
 	int add_blend_point(Ref<OzzAnimationState> as, Vector2 p_position) {
@@ -1311,6 +1296,16 @@ public:
 	}
 
 	Ref<OzzAnimationState> get_animation_state(OzzGD *ozz, Vector2 p_position) {
+		if (output_pose == nullptr) {
+			ERR_PRINT("call init() on blend space before use!");
+			output_pose = ozz->new_state();
+		}
+		Ref<OzzAnimationState> out = _get_animation_state(ozz, p_position);
+		output_pose->copy_pose(out);
+		return output_pose;
+	}
+
+	inline Ref<OzzAnimationState> _get_animation_state(OzzGD *ozz, Vector2 p_position) {
 		p_position.x = CLAMP(p_position.x, -1.0f, 1.0f);
 		p_position.y = CLAMP(p_position.y, -1.0f, 1.0f);
 
@@ -1323,7 +1318,7 @@ public:
 		// Find blend triangle
 		for (int i = 0; i < triangles.size(); i++) {
 			Array tri = triangles[i];
-			// HANDLE CASE WHERE BLEND_POS IS ON POINT
+			// handle case where blend_pos is on point
 			for (int x = 0; x < tri.size(); x++) {
 				int index = (int)tri[x];
 				if (p_position.distance_to(blend_points[index].position) <= CMP_EPSILON) {
@@ -1337,12 +1332,8 @@ public:
 				continue; // FUTURE: Handle case where we create a simple line?
 			}
 
-			// HANDLE CASE WHERE BLEND_POS IS INSIDE TRIANGLE
-			// Vector2 centroid = (blend_points[(int)tri[0]].position + blend_points[(int)tri[1]].position + blend_points[(int)tri[2]].position) / 3.0;
-			Vector2 dir0; // = centroid.direction_to(blend_points[(int)tri[0]].position) * CMP_EPSILON;
-			Vector2 dir1; // = centroid.direction_to(blend_points[(int)tri[1]].position) * CMP_EPSILON;
-			Vector2 dir2; // = centroid.direction_to(blend_points[(int)tri[2]].position) * CMP_EPSILON;
-			if (Geometry2D::is_point_in_triangle(p_position, blend_points[(int)tri[0]].position + dir0, blend_points[(int)tri[1]].position + dir1, blend_points[(int)tri[2]].position + dir2)) {
+			// handle case where blend_pos is inside triangle
+			if (Geometry2D::is_point_in_triangle(p_position, blend_points[(int)tri[0]].position, blend_points[(int)tri[1]].position, blend_points[(int)tri[2]].position)) {
 				Ref<OzzAnimationState> states[3] = {
 					blend_points[(int)tri[0]].animation_state, // You dont need to copy. This was done to remove the cached values but these are overriden when play_animation is called with update_cache = true
 					blend_points[(int)tri[1]].animation_state,
@@ -1479,6 +1470,7 @@ public:
 	}
 
 	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("init"), &OzzBlendSpace2D::init);
 		ClassDB::bind_method(D_METHOD("replace", "index", "animation_state"), &OzzBlendSpace2D::replace);
 		ClassDB::bind_method(D_METHOD("add_blend_point", "animation", "point"), &OzzBlendSpace2D::add_blend_point);
 		ClassDB::bind_method(D_METHOD("get_animation_state", "ozz", "position"), &OzzBlendSpace2D::get_animation_state);
@@ -1486,6 +1478,8 @@ public:
 		ClassDB::bind_method(D_METHOD("set_triangles", "triangles"), &OzzBlendSpace2D::set_triangles, DEFVAL(Array()));
 		ClassDB::bind_method(D_METHOD("get_triangles"), &OzzBlendSpace2D::get_triangles);
 		ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "triangles"), "set_triangles", "get_triangles");
+		ClassDB::bind_method(D_METHOD("get_pose"), &OzzBlendSpace2D::get_pose);
+		ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "pose"), "", "get_pose");
 	}
 };
 
