@@ -431,7 +431,10 @@ public:
 			return false;
 		}
 
-		int loops = state->controller.Update(*state->animation, delta);
+		int loops = 0;
+		if (delta > 0.f) { // dont call controller.update with delta 0. it makes the prev ratio == current ratio. which is bad for track triggering
+			state->controller.Update(*state->animation, delta);
+		}
 
 		if (update_cache == false) {
 			return false;
@@ -491,8 +494,17 @@ public:
 		if (sample_events && state->has_events) {
 			ozz::animation::TrackTriggeringJob job;
 			job.from = state->controller.previous_time_ratio();
-			job.to = state->controller.time_ratio() + 0.0003f;
-			job.threshold = 0.f;
+			job.to = state->controller.time_ratio();
+			job.threshold = 0.5f;
+			// if from > to, playing in reverse, rising edges become falling
+			bool rising = job.to > job.from;
+			float d = job.to - job.from;
+			if (state->controller.playback_speed() > 0.f && d < 0.f) {
+				// loop as occured
+				job.from = job.to;
+			} else if (state->controller.playback_speed() < 0.f && d > 0.f) {
+				job.to = job.from;
+			}
 
 			for (int i = 0; i < state->events.size(); i++) {
 				ozz::unique_ptr<ozz::animation::FloatTrack> &track = state->events[i];
@@ -508,9 +520,9 @@ public:
 				for (const ozz::animation::TrackTriggeringJob::Iterator end = job.end();
 						iterator != end; ++iterator) {
 					const ozz::animation::TrackTriggeringJob::Edge &edge = *iterator;
-					if (edge.rising) {
+					if (edge.rising == rising) {
 						String track_name = String(track->name());
-						emit_signal("event_triggered", track_name);
+						emit_signal("event_triggered", String(state->animation->name()), track_name);
 					}
 				}
 			}
@@ -877,24 +889,32 @@ public:
 							if (event_name.get_type() == Variant::Type::STRING) {
 								String event_name_string = static_cast<String>(event_name);
 								// Find/create event track
-								ozz::animation::offline::RawFloatTrack raw_event_track;
-								for (ozz::animation::offline::RawFloatTrack raw_track : raw_event_tracks) {
-									if (strcmp(raw_track.name.c_str(), event_name_string.utf8().get_data())) {
-										raw_event_track = raw_track;
+								int track_index = -1;
+								for (int ti = 0; ti < raw_event_tracks.size(); ti++) {
+									if (strcmp(raw_event_tracks[ti].name.c_str(), event_name_string.utf8().get_data()) == 0) {
+										track_index = ti;
+										break;
 									}
 								}
+								if (track_index == -1) {
+									raw_event_tracks.resize(raw_event_tracks.size() + 1);
+									track_index = raw_event_tracks.size() - 1;
+								}
+								ozz::animation::offline::RawFloatTrack& raw_event_track = raw_event_tracks[track_index];
 								ozz::animation::offline::RawTrackKeyframe<float> frame;
 								frame.value = 1.f;
-								frame.ratio = CLAMP(animation->track_get_key_time(i, j) / animation->get_length(), 0.0002f, animation->get_length());
+								double ratio = CLAMP(animation->track_get_key_time(i, j) / animation->get_length(), 0.0002, 1.0);
+								frame.ratio = (float)ratio;
+								frame.interpolation = ozz::animation::offline::RawTrackInterpolation::kStep;
 								ozz::animation::offline::RawTrackKeyframe<float> low;
 								low.value = 0.f;
 								low.ratio = frame.ratio - 0.0001f;
+								low.interpolation = ozz::animation::offline::RawTrackInterpolation::kStep;
 								raw_event_track.keyframes.push_back(low);
 								raw_event_track.keyframes.push_back(frame);
 
 								if (raw_event_track.name.empty()) {
 									raw_event_track.name = ozz::string(event_name_string.utf8().get_data());
-									raw_event_tracks.push_back(raw_event_track);
 								}
 							}
 						}
@@ -911,6 +931,7 @@ public:
 			output << *event_track.get();
 		}
 
+		// todo: memcpy would be faster??
 		buf.Seek(0, ozz::io::MemoryStream::kSet);
 		for (int i = 0; i < buf.Size(); i++) {
 			unsigned char byte;
@@ -926,6 +947,7 @@ public:
 		ozz::animation::offline::RawAnimation raw_animation;
 		// All the animation keyframes times must be within range [0, duration].
 		raw_animation.duration = animation->get_length();
+		raw_animation.name = ozz::string(animation->get_name().utf8().get_data());
 
 		// Godot animations have separate tracks for rot/pos/scale, ozz has 1 track per joint
 		// Warning: Assumption: All tracks are for bones/joints in a skeleton.
@@ -1239,7 +1261,7 @@ public:
 				"get_tick_time");
 		ClassDB::bind_method(D_METHOD("update_hitboxes", "global_transform", "hitboxes"), &OzzGD::update_hitboxes);
 		ClassDB::bind_method(D_METHOD("update_skeleton_ragdoll", "global_transform", "bodies", "skeleton_rid", "visibility_rid"), &OzzGD::update_skeleton_ragdoll);
-		ClassDB::add_signal("OzzGD", MethodInfo("event_triggered", PropertyInfo(Variant::STRING, "event_name")));
+		ClassDB::add_signal("OzzGD", MethodInfo("event_triggered", PropertyInfo(Variant::STRING, "anim_name"), PropertyInfo(Variant::STRING, "event_name")));
 	}
 };
 
@@ -1260,6 +1282,8 @@ public:
 
 	std::vector<OzzBlendPoint> blend_points;
 	Array triangles;
+	bool sample_motion = false;
+	bool sample_events = true;
 
 	Array get_triangles() { return triangles; }
 	void set_triangles(Array p_triangles) { triangles = p_triangles; }
@@ -1323,7 +1347,7 @@ public:
 				int index = (int)tri[x];
 				if (p_position.distance_to(blend_points[index].position) <= CMP_EPSILON) {
 					Ref<OzzAnimationState> as = blend_points[index].animation_state;
-					ozz->play_animation(as, 0.0, true);
+					ozz->play_animation(as, 0.0, true, sample_motion, sample_events);
 					return as;
 				}
 			}
@@ -1347,17 +1371,17 @@ public:
 				};
 
 				if (p_position.distance_squared_to(positions[0]) <= CMP_EPSILON) {
-					ozz->play_animation(states[0], 0.0, true);
+					ozz->play_animation(states[0], 0.0, true, sample_motion, sample_events);
 					return states[0];
 				}
 
 				if (p_position.distance_squared_to(positions[1]) <= CMP_EPSILON) {
-					ozz->play_animation(states[1], 0.0, true);
+					ozz->play_animation(states[1], 0.0, true, sample_motion, sample_events);
 					return states[1];
 				}
 
 				if (p_position.distance_squared_to(positions[2]) <= CMP_EPSILON) {
-					ozz->play_animation(states[2], 0.0, true);
+					ozz->play_animation(states[2], 0.0, true, sample_motion, sample_events);
 					return states[2];
 				}
 
@@ -1372,7 +1396,7 @@ public:
 				real_t d21 = v2.dot(v1);
 				real_t denom = (d00 * d11 - d01 * d01);
 				if (denom == 0) {
-					ozz->play_animation(states[0], 0.0, true);
+					ozz->play_animation(states[0], 0.0, true, sample_motion, sample_events);
 					return states[0];
 				}
 
@@ -1380,9 +1404,9 @@ public:
 				real_t w = (d00 * d21 - d01 * d20) / denom;
 				real_t u = 1.0 - v - w;
 
-				ozz->play_animation(states[0], 0.0, true);
-				ozz->play_animation(states[1], 0.0, true);
-				ozz->play_animation(states[2], 0.0, true);
+				ozz->play_animation(states[0], 0.0, true, false, false);
+				ozz->play_animation(states[1], 0.0, true, sample_motion, sample_events);
+				ozz->play_animation(states[2], 0.0, true, false, false);
 
 				ozz->blend_animations(states[0], states[1], v);
 				ozz->blend_animations(states[0], states[2], w);
@@ -1424,17 +1448,17 @@ public:
 		};
 
 		if (Math::is_equal_approx(blend_weights[0], 1.0f)) {
-			ozz->play_animation(states[0], 0.0, true);
+			ozz->play_animation(states[0], 0.0, true, sample_motion, sample_events);
 			return states[0];
 		}
 
 		if (Math::is_equal_approx(blend_weights[1], 1.0f)) {
-			ozz->play_animation(states[1], 0.0, true);
+			ozz->play_animation(states[1], 0.0, true, sample_motion, sample_events);
 			return states[1];
 		}
 
 		if (Math::is_equal_approx(blend_weights[2], 1.0f)) {
-			ozz->play_animation(states[2], 0.0, true);
+			ozz->play_animation(states[2], 0.0, true, sample_motion, sample_events);
 			return states[2];
 		}
 
@@ -1442,22 +1466,22 @@ public:
 
 		if (blend_weights[0] > 0.0 && blend_weights[1] > 0.0) {
 			state = states[0];
-			ozz->play_animation(state, 0.0, true);
-			ozz->play_animation(states[1], 0.0, true);
+			ozz->play_animation(state, 0.0, true, sample_motion, sample_events);
+			ozz->play_animation(states[1], 0.0, true, false, false);
 			ozz->blend_animations(state, states[1], blend_weights[1]);
 		}
 
 		if (blend_weights[0] > 0.0 && blend_weights[2] > 0.0) {
 			state = states[0];
-			ozz->play_animation(state, 0.0, true);
-			ozz->play_animation(states[2], 0.0, true);
+			ozz->play_animation(state, 0.0, true, sample_motion, sample_events);
+			ozz->play_animation(states[2], 0.0, true, false, false);
 			ozz->blend_animations(state, states[2], blend_weights[2]);
 		}
 
 		if (blend_weights[1] > 0.0 && blend_weights[2] > 0.0) {
 			state = states[1];
-			ozz->play_animation(state, 0.0, true);
-			ozz->play_animation(states[2], 0.0, true);
+			ozz->play_animation(state, 0.0, true, sample_motion, sample_events);
+			ozz->play_animation(states[2], 0.0, true, false, false);
 			ozz->blend_animations(state, states[2], blend_weights[2]);
 		}
 
