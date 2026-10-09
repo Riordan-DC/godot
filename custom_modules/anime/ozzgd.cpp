@@ -506,12 +506,12 @@ int OzzGD::find_bone(String bone_name) {
 }
 
 // TODO: Add error logs and error checks
-PackedByteArray OzzGD::convert_animation_to_ozz(Ref<Animation> animation, bool extract_motion, int root_bone, bool use_scale, bool delta) {
+PackedByteArray OzzGD::convert_animation_to_ozz(Ref<Animation> animation, bool extract_motion, int root_bone, bool use_scale, bool delta, bool optimize) {
     PackedByteArray data;
     ozz::io::MemoryStream buf;
     ozz::io::OArchive output(&buf);
 
-    ozz::animation::offline::RawAnimation raw_animation = _load_animation(animation, use_scale);
+    ozz::animation::offline::RawAnimation raw_animation = _load_animation(animation, use_scale, optimize);
 
     // Test for animation validity. These are the errors that could invalidate
     // an animation:
@@ -654,7 +654,7 @@ PackedByteArray OzzGD::convert_animation_to_ozz(Ref<Animation> animation, bool e
     return data;
 }
 
-ozz::animation::offline::RawAnimation OzzGD::_load_animation(Ref<Animation> animation, bool use_scale) {
+ozz::animation::offline::RawAnimation OzzGD::_load_animation(Ref<Animation> animation, bool use_scale, bool optimize) {
     // Use the Ozz animation builder to create an ozz animation.
     ozz::animation::offline::RawAnimation raw_animation;
     // All the animation keyframes times must be within range [0, duration].
@@ -752,26 +752,30 @@ ozz::animation::offline::RawAnimation OzzGD::_load_animation(Ref<Animation> anim
         }
     }
 
-    // Optimize
-    ozz::animation::offline::AnimationOptimizer optimizer;
-    ozz::animation::offline::AnimationOptimizer::Setting setting;
+    if (optimize) {
 
-    // Setup global optimization settings.
-    optimizer.setting = setting;
-
-    // Setup joint specific optimization settings.
-    /*
-    if (joint_setting_enable_) {
-        optimizer.joints_setting_override[joint_] = joint_setting_;
+        // Optimize
+        ozz::animation::offline::AnimationOptimizer optimizer;
+        ozz::animation::offline::AnimationOptimizer::Setting setting;
+        
+        // Setup global optimization settings.
+        optimizer.setting = setting;
+        
+        // Setup joint specific optimization settings.
+        /*
+        if (joint_setting_enable_) {
+            optimizer.joints_setting_override[joint_] = joint_setting_;
+            }
+            */
+        ozz::animation::offline::RawAnimation raw_optimized_animation;
+        
+        if (!optimizer(raw_animation, *skeleton, &raw_optimized_animation)) {
+            return raw_animation;
+        }
+        
+        return raw_optimized_animation;
     }
-    */
-    ozz::animation::offline::RawAnimation raw_optimized_animation;
-
-    if (!optimizer(raw_animation, *skeleton, &raw_optimized_animation)) {
-        return raw_animation;
-    }
-
-    return raw_optimized_animation;
+    return raw_animation;
 }
 
 void OzzGD::update_skeleton_interpolated(float delta, RID skeleton_rid, RID visibility_notifier_rid) {

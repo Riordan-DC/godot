@@ -292,9 +292,9 @@ public:
 	int find_bone(String bone_name);
 
 	// TODO: Add error logs and error checks
-	PackedByteArray convert_animation_to_ozz(Ref<Animation> animation, bool extract_motion, int root_bone = 0, bool use_scale = false, bool delta = false);
+	PackedByteArray convert_animation_to_ozz(Ref<Animation> animation, bool extract_motion, int root_bone = 0, bool use_scale = false, bool delta = false, bool optimize = true);
 
-	ozz::animation::offline::RawAnimation _load_animation(Ref<Animation> animation, bool use_scale = false);
+	ozz::animation::offline::RawAnimation _load_animation(Ref<Animation> animation, bool use_scale = false, bool optimize = true);
 
 	void update_skeleton_interpolated(float delta, RID skeleton_rid, RID visibility_notifier_rid);
 
@@ -560,11 +560,13 @@ class OzzAimOffset : public RefCounted {
 
 public:
 	Ref<OzzAnimationState> output_pose;
+	Ref<OzzAnimationState> x_pose;
+	Ref<OzzAnimationState> y_pose;
 	std::vector<Ref<OzzAnimationState>> poses;
 
 	OzzAimOffset() {}
 
-	int load(Ref<OzzAnimationState> animation) {
+	int load(Ref<OzzGD> ozz, Ref<OzzAnimationState> animation) {
 		// must assert there are 10 frames
 		// frame 0: reference pose
 		// frame 1: down left
@@ -582,12 +584,16 @@ public:
 		}
 
 		// Sample poses at each timepoint. Copy the locals into their own state
-		poses.resize(10);
-		for (int i = 0; i < 10; i++) {
+		poses.resize(9);
+		output_pose = ozz->new_state();
+		x_pose = ozz->new_state();
+		y_pose = ozz->new_state();
+		for (int i = 0; i < 9; i++) {
+			poses[i] = ozz->new_state();
 			ozz::animation::SamplingJob sampling_job;
 			sampling_job.animation = animation->animation.get();
 			sampling_job.context = &animation->context;
-			sampling_job.ratio = timepoints[i];
+			sampling_job.ratio = timepoints[i+1];
 			sampling_job.output = make_span(poses[i]->locals);
 
 			// Samples animation.
@@ -599,8 +605,76 @@ public:
 		return 0;
 	}
 
+	Ref<OzzAnimationState> sample(Ref<OzzGD> ozz, Vector2 pos) {
+		if (poses.size() != 9) {
+			return nullptr;
+		}
+		// 0 = reference
+		// 1,2,3 = down
+		// 4,5,6 = forward
+		// 7,8,9 = up
+		// separate x and y blends 
+
+		float x = CLAMP(pos.x, -1.f, 1.f);
+		float y = -CLAMP(pos.y, -1.f, 1.f);
+		int col = (int)(roundf(x + 1.0f));
+		int row = (int)(roundf(y + 1.0f));
+
+		// issue: row and col SNAP across 0.5 boundaries
+		Array args;
+		args.append(row);
+		args.append(col);
+		print_line(String("row {0} col {1}").format(args));
+
+		// x, col blend
+		{
+			if (x == 0.f) {
+				Ref<OzzAnimationState> a = poses[4];
+				x_pose->copy_pose(a);
+			}
+			else if (x < 0.f) { // col 0
+				Ref<OzzAnimationState> center = poses[row * 3 + 1];
+				Ref<OzzAnimationState> other = poses[row * 3];
+				float w = fabsf(x);
+				ozz->blend2(x_pose, center, other, w);
+			}
+			else if (x > 0.f) {
+				Ref<OzzAnimationState> center = poses[row * 3 + 1];
+				Ref<OzzAnimationState> other = poses[row * 3 + 2];
+				float w = fabsf(x);
+				ozz->blend2(x_pose, center, other, w);
+			}
+		}
+
+		// y, row blend
+		{
+			if (y == 0.f) {
+				Ref<OzzAnimationState> a = poses[4];
+				y_pose->copy_pose(a);
+			}
+			else if (y < 0.f) { // blend row 0 + row 1
+				Ref<OzzAnimationState> center = poses[1 * 3 + col];
+				Ref<OzzAnimationState> other = poses[col];
+				float w = fabsf(y);
+				ozz->blend2(y_pose, center, other, w);
+			}
+			else if (y > 0.f) {
+				Ref<OzzAnimationState> center = poses[1 * 3 + col];
+				Ref<OzzAnimationState> other = poses[2 * 3 + col];
+				float w = fabsf(y);
+				ozz->blend2(y_pose, center, other, w);
+			}
+		}
+
+		float w = 0.5;
+		ozz->blend2(output_pose, x_pose, y_pose, w);
+		return output_pose;
+		
+	}
+
 	static void _bind_methods() {
-   		ClassDB::bind_method(D_METHOD("load", "animation"), &OzzAimOffset::load);
+   		ClassDB::bind_method(D_METHOD("load", "ozz", "animation"), &OzzAimOffset::load);
+		ClassDB::bind_method(D_METHOD("sample", "ozz", "pos"), &OzzAimOffset::sample);
 	}
 
 };
