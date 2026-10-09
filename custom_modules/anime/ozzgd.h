@@ -560,8 +560,8 @@ class OzzAimOffset : public RefCounted {
 
 public:
 	Ref<OzzAnimationState> output_pose;
-	Ref<OzzAnimationState> x_pose;
-	Ref<OzzAnimationState> y_pose;
+	Ref<OzzAnimationState> x1_pose;
+	Ref<OzzAnimationState> x2_pose;
 	std::vector<Ref<OzzAnimationState>> poses;
 
 	OzzAimOffset() {}
@@ -586,8 +586,8 @@ public:
 		// Sample poses at each timepoint. Copy the locals into their own state
 		poses.resize(9);
 		output_pose = ozz->new_state();
-		x_pose = ozz->new_state();
-		y_pose = ozz->new_state();
+		x1_pose = ozz->new_state();
+		x2_pose = ozz->new_state();
 		for (int i = 0; i < 9; i++) {
 			poses[i] = ozz->new_state();
 			ozz::animation::SamplingJob sampling_job;
@@ -609,65 +609,63 @@ public:
 		if (poses.size() != 9) {
 			return nullptr;
 		}
-		// 0 = reference
-		// 1,2,3 = down
-		// 4,5,6 = forward
-		// 7,8,9 = up
-		// separate x and y blends 
+		// bilinear interpolation of animations
+		// 1. find the quad, 4 poses, our sample is in
+		// 2. find x,y blend weight for sample pos
+		// 3. blend 2 top and 2 bottom with weight x
+		// 4. blend top and bottom results with weight y
+
+		// blend matrix:
+		// 0 1 2 = down
+		// 3 4 5 = forward
+		// 6 7 8 = up
 
 		float x = CLAMP(pos.x, -1.f, 1.f);
 		float y = -CLAMP(pos.y, -1.f, 1.f);
-		int col = (int)(roundf(x + 1.0f));
-		int row = (int)(roundf(y + 1.0f));
 
-		// issue: row and col SNAP across 0.5 boundaries
-		Array args;
-		args.append(row);
-		args.append(col);
-		print_line(String("row {0} col {1}").format(args));
+		// top
+		Ref<OzzAnimationState> q1;
+		Ref<OzzAnimationState> q2;
+		// bottom
+		Ref<OzzAnimationState> q3;
+		Ref<OzzAnimationState> q4;
 
-		// x, col blend
-		{
-			if (x == 0.f) {
-				Ref<OzzAnimationState> a = poses[4];
-				x_pose->copy_pose(a);
-			}
-			else if (x < 0.f) { // col 0
-				Ref<OzzAnimationState> center = poses[row * 3 + 1];
-				Ref<OzzAnimationState> other = poses[row * 3];
-				float w = fabsf(x);
-				ozz->blend2(x_pose, center, other, w);
-			}
-			else if (x > 0.f) {
-				Ref<OzzAnimationState> center = poses[row * 3 + 1];
-				Ref<OzzAnimationState> other = poses[row * 3 + 2];
-				float w = fabsf(x);
-				ozz->blend2(x_pose, center, other, w);
-			}
+		float bx = fabsf(x);
+		float by = fabsf(y);
+
+		if (x <= 0.f && y <= 0.f) { // quad 0
+			bx = 1.f - bx;
+			by = 1.f - by;
+			q1 = poses[0];
+			q2 = poses[1];
+			q3 = poses[3];
+			q4 = poses[4];
+		} else if (x >= 0.f && y <= 0.f) { // quad 1
+			by = 1.f - by;
+			q1 = poses[1];
+			q2 = poses[2];
+			q3 = poses[4];
+			q4 = poses[5]; 
+		} else if (x <= 0.f && y >= 0.f) { // quad 2
+			bx = 1.f - bx;
+			q1 = poses[3];
+			q2 = poses[4];
+			q3 = poses[6];
+			q4 = poses[7]; 
+		} else if (x >= 0.f && y >= 0.f) { // quad 3
+			q1 = poses[4];
+			q2 = poses[5];
+			q3 = poses[7];
+			q4 = poses[8]; 
+		} else {
+			print_line("WTF THIS IS WRONG");
 		}
 
-		// y, row blend
-		{
-			if (y == 0.f) {
-				Ref<OzzAnimationState> a = poses[4];
-				y_pose->copy_pose(a);
-			}
-			else if (y < 0.f) { // blend row 0 + row 1
-				Ref<OzzAnimationState> center = poses[1 * 3 + col];
-				Ref<OzzAnimationState> other = poses[col];
-				float w = fabsf(y);
-				ozz->blend2(y_pose, center, other, w);
-			}
-			else if (y > 0.f) {
-				Ref<OzzAnimationState> center = poses[1 * 3 + col];
-				Ref<OzzAnimationState> other = poses[2 * 3 + col];
-				float w = fabsf(y);
-				ozz->blend2(y_pose, center, other, w);
-			}
-		}
-
-		float w = 0.5;
-		ozz->blend2(output_pose, x_pose, y_pose, w);
+		// blend animations
+		ozz->blend2(x1_pose, q1, q2, bx);
+		ozz->blend2(x2_pose, q3, q4, bx);
+		// final y blend
+		ozz->blend2(output_pose, x1_pose, x2_pose, by);
 		return output_pose;
 		
 	}
