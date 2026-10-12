@@ -566,6 +566,8 @@ public:
 
 	OzzAimOffset() {}
 
+	Ref<OzzAnimationState> get_pose() { return output_pose; }
+
 	int load(Ref<OzzGD> ozz, Ref<OzzAnimationState> animation) {
 		// must assert there are 10 frames
 		// frame 0: reference pose
@@ -673,6 +675,8 @@ public:
 	static void _bind_methods() {
    		ClassDB::bind_method(D_METHOD("load", "ozz", "animation"), &OzzAimOffset::load);
 		ClassDB::bind_method(D_METHOD("sample", "ozz", "pos"), &OzzAimOffset::sample);
+		ClassDB::bind_method(D_METHOD("get_pose"), &OzzAimOffset::get_pose);
+		ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "pose"), "", "get_pose");
 	}
 
 };

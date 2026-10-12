@@ -362,27 +362,12 @@ void OzzGD::add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref
             }
         }
 
-        ozz::animation::BlendingJob::Layer blend_layers[2];
-        blend_layers[0].transform = make_span(base->locals);
-        blend_layers[0].weight = 1.f;
-        blend_layers[0].joint_weights = make_span(base->joint_weights);
-        blend_layers[1].transform = make_span(add->locals);
-        blend_layers[1].weight = blend_amount;
-        blend_layers[1].joint_weights = make_span(add->joint_weights);
-        ozz::animation::BlendingJob add_job;
-        add_job.threshold = threshold;
-        add_job.layers = blend_layers;
-        add_job.rest_pose = skeleton->joint_rest_poses();
-        add_job.output = make_span(output->locals);
-        add_job.Run();
-    } else {
         ozz::animation::BlendingJob::Layer layers[1];
         layers[0].transform = make_span(base->locals);
         layers[0].weight = 1.f; //state->weight;
         layers[0].joint_weights = make_span(base->joint_weights);
 
-        ozz::vector<ozz::animation::BlendingJob::Layer> additive;
-        additive.resize(1);
+        ozz::animation::BlendingJob::Layer additive[1];
 
         additive[0].transform = make_span(add->locals);
         additive[0].weight = blend_amount;
@@ -391,7 +376,30 @@ void OzzGD::add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref
         ozz::animation::BlendingJob add_job;
         add_job.threshold = threshold;
         add_job.layers = layers;
-        add_job.additive_layers = make_span(additive);
+        add_job.additive_layers = additive;
+        add_job.rest_pose = skeleton->joint_rest_poses();
+        add_job.output = make_span(output->locals);
+
+        // Blends.
+        if (!add_job.Run()) {
+            return;
+        }
+    } else {
+        ozz::animation::BlendingJob::Layer layers[1];
+        layers[0].transform = make_span(base->locals);
+        layers[0].weight = 1.f; //state->weight;
+        layers[0].joint_weights = make_span(base->joint_weights);
+
+        ozz::animation::BlendingJob::Layer additive[1];
+
+        additive[0].transform = make_span(add->locals);
+        additive[0].weight = blend_amount;
+        additive[0].joint_weights = make_span(add->joint_weights);
+
+        ozz::animation::BlendingJob add_job;
+        add_job.threshold = threshold;
+        add_job.layers = layers;
+        add_job.additive_layers = additive;
         add_job.rest_pose = skeleton->joint_rest_poses();
         add_job.output = make_span(output->locals);
 
