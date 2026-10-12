@@ -177,7 +177,7 @@ bool OzzGD::play_animation(Ref<OzzAnimationState> state, float delta, bool updat
 
     int loops = 0;
     if (delta > 0.f) { // dont call controller.update with delta 0. it makes the prev ratio == current ratio. which is bad for track triggering
-        state->controller.Update(*state->animation, delta);
+        loops = state->controller.Update(*state->animation, delta);
     }
 
     if (update_cache == false) {

@@ -186,8 +186,11 @@ public:
 	void set_playback_speed(float f) { controller.set_playback_speed(f); }
 	float get_playback_speed() { return controller.playback_speed(); }
 
+	void set_loop(bool value) { controller.set_loop(value); }
+
 	// useful for seeking through an animation. After call play animation with delta = 0.0 to update cache
 	void set_time_ratio(float f) { controller.set_time_ratio(f); }
+	float get_time_ratio() { return controller.time_ratio(); }
 
 	Transform3D get_transform() {
 		return ozz_to_godot_xform(transform);
@@ -209,6 +212,8 @@ public:
 		ClassDB::bind_method(D_METHOD("set_joint_weights", "weights"), &OzzAnimationState::set_joint_weights, DEFVAL(PackedFloat32Array()));
 		ClassDB::bind_method(D_METHOD("get_transform"), &OzzAnimationState::get_transform);
 		ClassDB::bind_method(D_METHOD("get_duration"), &OzzAnimationState::get_duration);
+		ClassDB::bind_method(D_METHOD("get_time_ratio"), &OzzAnimationState::get_time_ratio);
+		ClassDB::bind_method(D_METHOD("set_loop", "loop"), &OzzAnimationState::set_loop);
 		ClassDB::bind_method(D_METHOD("set_time_ratio", "time"), &OzzAnimationState::set_time_ratio);
 		ClassDB::bind_method(D_METHOD("copy_pose", "animation_state"), &OzzAnimationState::copy_pose);
 		ClassDB::bind_method(D_METHOD("set_time_stretch", "stretch"), &OzzAnimationState::set_time_stretch, DEFVAL(1.f));
