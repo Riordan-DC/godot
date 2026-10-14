@@ -573,6 +573,34 @@ public:
 
 	Ref<OzzAnimationState> get_pose() { return output_pose; }
 
+	void update_poses(Ref<OzzGD> ozz, float dt, bool update_cache, bool sample_motion, bool sample_events) {
+		for (int i = 0; i < poses.size(); i++) {
+			ozz->play_animation(poses[i], dt, update_cache, sample_motion, sample_events);
+		}
+	}
+
+	void load_clips(Ref<OzzGD> ozz,
+		Ref<OzzAnimationState> NW, Ref<OzzAnimationState> N, Ref<OzzAnimationState> NE,
+		Ref<OzzAnimationState> W, Ref<OzzAnimationState> I, Ref<OzzAnimationState> E,
+		Ref<OzzAnimationState> SW, Ref<OzzAnimationState> S, Ref<OzzAnimationState> SE
+	) {
+		poses.resize(9);
+		output_pose = ozz->new_state();
+		x1_pose = ozz->new_state();
+		x2_pose = ozz->new_state();
+		poses[0] = SW;
+		poses[1] = S;
+		poses[2] = SE;
+
+		poses[3] = W;
+		poses[4] = I;
+		poses[5] = E;
+		
+		poses[6] = NW;
+		poses[7] = N;
+		poses[8] = NE;
+	}
+
 	int load(Ref<OzzGD> ozz, Ref<OzzAnimationState> animation) {
 		// must assert there are 10 frames
 		// frame 0: reference pose
@@ -678,6 +706,8 @@ public:
 	}
 
 	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("update_poses", "ozz", "delta", "update_cache", "sample_motion", "sample_events"), &OzzAimOffset::update_poses);
+		ClassDB::bind_method(D_METHOD("load_clips", "ozz", "nw", "n", "ne", "w", "i", "e", "sw", "s", "se"), &OzzAimOffset::load_clips);
    		ClassDB::bind_method(D_METHOD("load", "ozz", "animation"), &OzzAimOffset::load);
 		ClassDB::bind_method(D_METHOD("sample", "ozz", "pos"), &OzzAimOffset::sample);
 		ClassDB::bind_method(D_METHOD("get_pose"), &OzzAimOffset::get_pose);
