@@ -711,6 +711,8 @@ public:
 	}
 
 	Ref<OzzAnimationState> sample_diamond(Ref<OzzGD> ozz, Vector2 pos, bool sample_motion=false, bool sample_events=false) {
+		// Uses barycentric coordinates to generate blend weights
+		// Less blend operations but a lot more flow operations.
 		// WARNING: This is not the advised way to blend
 		// animations. If you make a blend space I would prefer
 		// you use the sample() method which uses bilinear interpolation.
@@ -725,7 +727,6 @@ public:
 		}
 
 		Ref<OzzAnimationState> states[3];
-		Vector2 positions[3];
 
 		float x = CLAMP(pos.x, -1.f, 1.f);
 		float y = CLAMP(pos.y, -1.f, 1.f);
@@ -736,30 +737,18 @@ public:
 		// 6 7 8 = up
 
 		if (x <= 0.f && y >= 0.f) { // tri top left
-			positions[0] = Vector2(0,0);
-			positions[1] = Vector2(0,1);
-			positions[2] = Vector2(-1,0);
 			states[0] = poses[4];
 			states[1] = poses[7];
 			states[2] = poses[3];
 		} else if (x >= 0.f && y >= 0.f) { // tri top right
-			positions[0] = Vector2(0,0);
-			positions[1] = Vector2(0,1);
-			positions[2] = Vector2(1,0);
 			states[0] = poses[4];
 			states[1] = poses[7];
 			states[2] = poses[5];
 		} else if (x <= 0.f && y <= 0.f) { // tri bot left
-			positions[0] = Vector2(0,0);
-			positions[1] = Vector2(0,-1);
-			positions[2] = Vector2(-1,0);
 			states[0] = poses[4];
 			states[1] = poses[1];
 			states[2] = poses[3];
 		} else if (x >= 0.f && y <= 0.f) { // tri bot right
-			positions[0] = Vector2(0,0);
-			positions[1] = Vector2(0,-1);
-			positions[2] = Vector2(1,0);
 			states[0] = poses[4];
 			states[1] = poses[1];
 			states[2] = poses[5];
@@ -767,33 +756,21 @@ public:
 			print_line("WTF THIS IS WRONG");
 			return output_pose;
 		}
-		positions[0] = Vector2(0,0);
-		positions[1] = Vector2(0,1);
-		positions[2] = Vector2(1,0);
+
 		pos = pos.abs();
 
-		if (_early_out(ozz, states[0], positions[0], pos, sample_motion, sample_events)) return output_pose;
-		if (_early_out(ozz, states[1], positions[1], pos, sample_motion, sample_events)) return output_pose;
-		if (_early_out(ozz, states[2], positions[2], pos, sample_motion, sample_events)) return output_pose;
+		if (_early_out(ozz, states[0], Vector2(0,0), pos, sample_motion, sample_events)) return output_pose;
+		if (_early_out(ozz, states[1], Vector2(0,1), pos, sample_motion, sample_events)) return output_pose;
+		if (_early_out(ozz, states[2], Vector2(1,0), pos, sample_motion, sample_events)) return output_pose;
 		
-		Vector2 v0 = positions[1] - positions[0];
-		Vector2 v1 = positions[2] - positions[0];
-		Vector2 v2 = pos - positions[0];
+		Vector2 v0 = Vector2(0,1);
+		Vector2 v1 = Vector2(1,0);
+		Vector2 v2 = pos;
 
-		real_t d00 = v0.dot(v0);
-		real_t d01 = v0.dot(v1);
-		real_t d11 = v1.dot(v1);
 		real_t d20 = v2.dot(v0);
 		real_t d21 = v2.dot(v1);
-		real_t denom = (d00 * d11 - d01 * d01);
-		if (denom == 0) {
-			ozz->play_animation(states[0], 0.0, true, sample_motion, sample_events);
-			output_pose->copy_pose(states[0]);
-			return output_pose;
-		}
-
-		real_t v = (d11 * d20 - d01 * d21) / denom; // b
-		real_t w = (d00 * d21 - d01 * d20) / denom; // c
+		real_t v = d20 / 1.f; // b
+		real_t w = d21 / 1.f; // c
 		real_t u = 1.0 - v - w; // a
 
 		ozz->play_animation(states[0], 0.0, true, false, false);
