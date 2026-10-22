@@ -50,6 +50,7 @@ bool OzzGD::init(
     // todo: models should be initialised to global rests
     std::fill(models.begin(), models.end(), ozz::math::Float4x4::identity());
 
+    aabb = AABB();
     return true;
 }
 
@@ -824,7 +825,7 @@ void OzzGD::update_skeleton_interpolated(float delta, RID skeleton_rid, RID visi
         return;
     }
 
-    AABB aabb = AABB();
+    aabb = AABB();
     int bind_count = binds.size();
     for (int i = 0; i < bind_count; i++) {
         // Only update the bones that are bound
@@ -853,7 +854,7 @@ void OzzGD::update_skeleton(RID skeleton_rid, RID visibility_notifier_rid) {
         return;
     }
 
-    AABB aabb = AABB();
+    aabb = AABB();
     int bind_count = binds.size();
     for (int i = 0; i < bind_count; i++) {
         // Only update the bones that are bound
@@ -974,15 +975,26 @@ void OzzGD::_bind_methods() {
     ClassDB::bind_method(D_METHOD("apply_animation_state", "animation_state"), &OzzGD::apply_animation_state);
     ClassDB::bind_method(D_METHOD("update_skeleton", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton);
     ClassDB::bind_method(D_METHOD("update_skeleton_interpolated", "delta", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton_interpolated);
+    ClassDB::bind_method(D_METHOD("get_bone_model_pose", "bone_id"), &OzzGD::get_bone_model_pose);
+    
     ClassDB::bind_method(D_METHOD("get_tick_time"), &OzzGD::get_tick_time);
     ClassDB::bind_method(D_METHOD("set_tick_time", "p_tick_time"), &OzzGD::set_tick_time);
-    ClassDB::bind_method(D_METHOD("get_bone_model_pose", "bone_id"), &OzzGD::get_bone_model_pose);
     ClassDB::add_property(
             "OzzGD",
             PropertyInfo(Variant::FLOAT, "tick_time", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT),
             "set_tick_time",
             "get_tick_time");
+    
     ClassDB::bind_method(D_METHOD("update_hitboxes", "global_transform", "hitboxes"), &OzzGD::update_hitboxes);
     ClassDB::bind_method(D_METHOD("update_skeleton_ragdoll", "global_transform", "bodies", "skeleton_rid", "visibility_rid"), &OzzGD::update_skeleton_ragdoll);
+
+    ClassDB::bind_method(D_METHOD("get_aabb"), &OzzGD::get_aabb);
+    ClassDB::add_property(
+            "OzzGD",
+            PropertyInfo(Variant::FLOAT, "aabb", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT),
+            "",
+            "get_aabb");
+    
     ClassDB::add_signal("OzzGD", MethodInfo("event_triggered", PropertyInfo(Variant::STRING, "anim_name"), PropertyInfo(Variant::STRING, "event_name")));
+    
 }

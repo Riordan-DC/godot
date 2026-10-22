@@ -246,6 +246,9 @@ public:
 	TypedArray<Transform3D> bind_poses;
 	PackedInt32Array binds;
 
+	AABB aabb;
+	AABB get_aabb() { return aabb; }
+
 	bool started = false;
 
 	float dt = 0.f;
@@ -560,8 +563,8 @@ public:
 	}
 };
 
-class OzzAimOffset : public RefCounted {
-	GDCLASS(OzzAimOffset, RefCounted);
+class OzzBlendMatrix : public RefCounted {
+	GDCLASS(OzzBlendMatrix, RefCounted);
 
 public:
 	Ref<OzzAnimationState> output_pose;
@@ -569,11 +572,12 @@ public:
 	Ref<OzzAnimationState> x2_pose;
 	std::vector<Ref<OzzAnimationState>> poses;
 
-	OzzAimOffset() {}
+	OzzBlendMatrix() {}
 
 	Ref<OzzAnimationState> get_pose() { return output_pose; }
 
 	void update_poses(Ref<OzzGD> ozz, float dt, bool update_cache, bool sample_motion, bool sample_events) {
+		// Warning: Some poses can be duplicates. We dont want to update them twice.
 		for (int i = 0; i < poses.size(); i++) {
 			ozz->play_animation(poses[i], dt, update_cache, sample_motion, sample_events);
 		}
@@ -642,7 +646,8 @@ public:
 
 	Ref<OzzAnimationState> sample(Ref<OzzGD> ozz, Vector2 pos) {
 		if (poses.size() != 9) {
-			return nullptr;
+			print_error("Cant sample without 9 poses!");
+			return output_pose;
 		}
 		// bilinear interpolation of animations
 		// 1. find the quad, 4 poses, our sample is in
@@ -655,9 +660,6 @@ public:
 		// 3 4 5 = forward
 		// 6 7 8 = up
 
-		float x = CLAMP(pos.x, -1.f, 1.f);
-		float y = -CLAMP(pos.y, -1.f, 1.f);
-
 		// top
 		Ref<OzzAnimationState> q1;
 		Ref<OzzAnimationState> q2;
@@ -665,9 +667,11 @@ public:
 		Ref<OzzAnimationState> q3;
 		Ref<OzzAnimationState> q4;
 
+		float x = CLAMP(pos.x, -1.f, 1.f);
+		float y = -CLAMP(pos.y, -1.f, 1.f);
 		float bx = fabsf(x);
 		float by = fabsf(y);
-
+		
 		if (x <= 0.f && y <= 0.f) { // quad 0
 			bx = 1.f - bx;
 			by = 1.f - by;
@@ -694,6 +698,7 @@ public:
 			q4 = poses[8]; 
 		} else {
 			print_line("WTF THIS IS WRONG");
+			return output_pose;
 		}
 
 		// blend animations
@@ -705,12 +710,119 @@ public:
 		
 	}
 
+	Ref<OzzAnimationState> sample_diamond(Ref<OzzGD> ozz, Vector2 pos, bool sample_motion=false, bool sample_events=false) {
+		// WARNING: This is not the advised way to blend
+		// animations. If you make a blend space I would prefer
+		// you use the sample() method which uses bilinear interpolation.
+		// It is a lot simpler to implement and bug fix. 
+		// Sampling this method requires limiting your sample pos
+		// to a diamond shape by scaling with l1 norm.
+
+		float l1 = abs(pos.x) + abs(pos.y);
+		if (l1 > 1.0) {
+			float s = 1.0 / l1;
+			pos *= s;
+		}
+
+		Ref<OzzAnimationState> states[3];
+		Vector2 positions[3];
+
+		float x = CLAMP(pos.x, -1.f, 1.f);
+		float y = CLAMP(pos.y, -1.f, 1.f);
+		
+		// blend matrix:
+		// 0 1 2 = down
+		// 3 4 5 = forward
+		// 6 7 8 = up
+
+		if (x <= 0.f && y >= 0.f) { // tri top left
+			positions[0] = Vector2(0,0);
+			positions[1] = Vector2(0,1);
+			positions[2] = Vector2(-1,0);
+			states[0] = poses[4];
+			states[1] = poses[7];
+			states[2] = poses[3];
+		} else if (x >= 0.f && y >= 0.f) { // tri top right
+			positions[0] = Vector2(0,0);
+			positions[1] = Vector2(0,1);
+			positions[2] = Vector2(1,0);
+			states[0] = poses[4];
+			states[1] = poses[7];
+			states[2] = poses[5];
+		} else if (x <= 0.f && y <= 0.f) { // tri bot left
+			positions[0] = Vector2(0,0);
+			positions[1] = Vector2(0,-1);
+			positions[2] = Vector2(-1,0);
+			states[0] = poses[4];
+			states[1] = poses[1];
+			states[2] = poses[3];
+		} else if (x >= 0.f && y <= 0.f) { // tri bot right
+			positions[0] = Vector2(0,0);
+			positions[1] = Vector2(0,-1);
+			positions[2] = Vector2(1,0);
+			states[0] = poses[4];
+			states[1] = poses[1];
+			states[2] = poses[5];
+		} else {
+			print_line("WTF THIS IS WRONG");
+			return output_pose;
+		}
+		positions[0] = Vector2(0,0);
+		positions[1] = Vector2(0,1);
+		positions[2] = Vector2(1,0);
+		pos = pos.abs();
+
+		if (_early_out(ozz, states[0], positions[0], pos, sample_motion, sample_events)) return output_pose;
+		if (_early_out(ozz, states[1], positions[1], pos, sample_motion, sample_events)) return output_pose;
+		if (_early_out(ozz, states[2], positions[2], pos, sample_motion, sample_events)) return output_pose;
+		
+		Vector2 v0 = positions[1] - positions[0];
+		Vector2 v1 = positions[2] - positions[0];
+		Vector2 v2 = pos - positions[0];
+
+		real_t d00 = v0.dot(v0);
+		real_t d01 = v0.dot(v1);
+		real_t d11 = v1.dot(v1);
+		real_t d20 = v2.dot(v0);
+		real_t d21 = v2.dot(v1);
+		real_t denom = (d00 * d11 - d01 * d01);
+		if (denom == 0) {
+			ozz->play_animation(states[0], 0.0, true, sample_motion, sample_events);
+			output_pose->copy_pose(states[0]);
+			return output_pose;
+		}
+
+		real_t v = (d11 * d20 - d01 * d21) / denom; // b
+		real_t w = (d00 * d21 - d01 * d20) / denom; // c
+		real_t u = 1.0 - v - w; // a
+
+		ozz->play_animation(states[0], 0.0, true, false, false);
+		ozz->play_animation(states[1], 0.0, true, sample_motion, sample_events);
+		ozz->play_animation(states[2], 0.0, true, false, false);
+
+		ozz->blend2(x1_pose, states[0], states[1], v);
+		ozz->blend2(output_pose, x1_pose, states[2], w);
+
+		return output_pose;
+	}
+
+	inline bool _early_out(Ref<OzzGD> ozz, Ref<OzzAnimationState> as, Vector2 x, Vector2 p, bool sample_motion, bool sample_events) {
+		if (x.distance_squared_to(p) <= CMP_EPSILON * CMP_EPSILON) {
+			ozz->play_animation(as, 0.0, true, sample_motion, sample_events);
+			output_pose->copy_pose(as);
+			return true;
+		}
+		return false;
+	}
+
+
 	static void _bind_methods() {
-		ClassDB::bind_method(D_METHOD("update_poses", "ozz", "delta", "update_cache", "sample_motion", "sample_events"), &OzzAimOffset::update_poses);
-		ClassDB::bind_method(D_METHOD("load_clips", "ozz", "nw", "n", "ne", "w", "i", "e", "sw", "s", "se"), &OzzAimOffset::load_clips);
-   		ClassDB::bind_method(D_METHOD("load", "ozz", "animation"), &OzzAimOffset::load);
-		ClassDB::bind_method(D_METHOD("sample", "ozz", "pos"), &OzzAimOffset::sample);
-		ClassDB::bind_method(D_METHOD("get_pose"), &OzzAimOffset::get_pose);
+		ClassDB::bind_method(D_METHOD("update_poses", "ozz", "delta", "update_cache", "sample_motion", "sample_events"), &OzzBlendMatrix::update_poses);
+		ClassDB::bind_method(D_METHOD("load_clips", "ozz", "nw", "n", "ne", "w", "i", "e", "sw", "s", "se"), &OzzBlendMatrix::load_clips);
+   		ClassDB::bind_method(D_METHOD("load", "ozz", "animation"), &OzzBlendMatrix::load);
+		ClassDB::bind_method(D_METHOD("sample", "ozz", "pos"), &OzzBlendMatrix::sample);
+		ClassDB::bind_method(D_METHOD("sample_diamond", "ozz", "pos", "sample_motion", "sample_events"), &OzzBlendMatrix::sample_diamond, DEFVAL(false), DEFVAL(false));
+		ClassDB::bind_method(D_METHOD("get_pose"), &OzzBlendMatrix::get_pose);
 		ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "pose"), "", "get_pose");
 	}
 
