@@ -15,7 +15,7 @@ bool OzzGD::init(
         return false;
     };
 
-    size_t bones = p_names.size();
+    bones = p_names.size();
     if (p_children.size() != bones || p_rests.size() != bones || p_global_rests.size() != bones || p_bind_poses.size() != bones) {
         ERR_PRINT("OzzGD Init error: One input array is not the same size. Invalid.");
         return false;
@@ -284,11 +284,15 @@ void OzzGD::blend2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, R
 
     layers[0].transform = make_span(base->locals);
     layers[0].weight = 1.0f - blend_amount;
-    layers[0].joint_weights = make_span(base->joint_weights);
+    if (!base->joint_weights.empty()) {
+        layers[0].joint_weights = make_span(base->joint_weights);
+    }
 
     layers[1].transform = make_span(blend->locals);
     layers[1].weight = blend_amount;
-    layers[1].joint_weights = make_span(blend->joint_weights);
+    if (!blend->joint_weights.empty()) {
+        layers[1].joint_weights = make_span(blend->joint_weights);
+    }
 
     // Setups blending job.
     ozz::animation::BlendingJob blend_job;
@@ -308,7 +312,7 @@ void OzzGD::add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref
         return;
     }
 
-    if (global_bone > -1) {
+    if (global_bone > -1 && global_bone < bones) {
         // Converts from local space to model space
         ozz::vector<ozz::math::Float4x4> base_models;
         base_models.resize(skeleton->num_joints());
@@ -319,48 +323,36 @@ void OzzGD::add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref
         if (!ltm_job.Run()) return;
 
         ozz::span<const int16_t> parents = skeleton->joint_parents();
-        for (int i = 0; i < skeleton->num_joints(); i++) {
-            int block = i / 4;
-            int lane = i % 4;
+        int block = global_bone / 4;
+        int lane = global_bone % 4;
+        int parent = parents[global_bone];
 
-            int parent = parents[i];
+        if (parent != ozz::animation::Skeleton::kNoParent) {
+            ozz::math::Float4x4 parent_model_matrix = base_models[parent]; //ozz::math::Invert(base_models[parent]);
+            ozz::math::SimdFloat4 r = ozz::math::ToQuaternion(parent_model_matrix);
+            float* rp = reinterpret_cast<float*>(&r);
+            ozz::math::Quaternion parent_model_rotation = ozz::math::Quaternion(rp[0], rp[1], rp[2], rp[3]);
+            ozz::math::Quaternion inv_parent_rotation = ozz::math::Conjugate(parent_model_rotation);
+            
+            // 3. Define your desired absolute model space rotation (e.g., Identity for no rotation)
+            Transform3D global_rest = rests[global_bone];
+            Quaternion q = global_rest.basis.get_rotation_quaternion();
+            ozz::math::Quaternion desired_model_rotation = ozz::math::Quaternion(q.x, q.y, q.z, q.w);
 
-            if (i == global_bone) {
-                if (parent == ozz::animation::Skeleton::kNoParent) {
-                    continue;
-                } else {
-                    ozz::math::Float4x4 parent_model_matrix = base_models[parent]; //ozz::math::Invert(base_models[parent]);
-                    ozz::math::SimdFloat4 r = ozz::math::ToQuaternion(parent_model_matrix);
-                    float* rp = reinterpret_cast<float*>(&r);
-                    ozz::math::Quaternion parent_model_rotation = ozz::math::Quaternion(rp[0], rp[1], rp[2], rp[3]);
-                    ozz::math::Quaternion inv_parent_rotation = ozz::math::Conjugate(parent_model_rotation);
-                    
-                    // 3. Define your desired absolute model space rotation (e.g., Identity for no rotation)
-                    // ozz::math::SoaTransform goal_transform = add->locals[block];
-                    // float* gx = reinterpret_cast<float*>(&goal_transform.rotation.x);
-                    // float* gy = reinterpret_cast<float*>(&goal_transform.rotation.y);
-                    // float* gz = reinterpret_cast<float*>(&goal_transform.rotation.z);
-                    // float* gw = reinterpret_cast<float*>(&goal_transform.rotation.w);
-                    Transform3D global_rest = rests[i];
-                    Quaternion q = global_rest.basis.get_rotation_quaternion();
-                    ozz::math::Quaternion desired_model_rotation = ozz::math::Quaternion(q.x, q.y, q.z, q.w);
+            // 4. Calculate the corrected local rotation
+            // Note: ozz-animation quaternion multiplication order is Left * Right
+            ozz::math::Quaternion corrected_local_rotation = inv_parent_rotation * desired_model_rotation;
 
-                    // 4. Calculate the corrected local rotation
-                    // Note: ozz-animation quaternion multiplication order is Left * Right
-                    ozz::math::Quaternion corrected_local_rotation = inv_parent_rotation * desired_model_rotation;
-    
-                    float* px = reinterpret_cast<float*>(&output->locals[block].rotation.x);
-                    float* py = reinterpret_cast<float*>(&output->locals[block].rotation.y);
-                    float* pz = reinterpret_cast<float*>(&output->locals[block].rotation.z);
-                    float* pw = reinterpret_cast<float*>(&output->locals[block].rotation.w);
+            float* px = reinterpret_cast<float*>(&output->locals[block].rotation.x);
+            float* py = reinterpret_cast<float*>(&output->locals[block].rotation.y);
+            float* pz = reinterpret_cast<float*>(&output->locals[block].rotation.z);
+            float* pw = reinterpret_cast<float*>(&output->locals[block].rotation.w);
 
-                    // Overwrite the specific lane
-                    px[lane] = corrected_local_rotation.x;
-                    py[lane] = corrected_local_rotation.y;
-                    pz[lane] = corrected_local_rotation.z;
-                    pw[lane] = corrected_local_rotation.w;	
-                }
-            }
+            // Overwrite the specific lane
+            px[lane] = corrected_local_rotation.x;
+            py[lane] = corrected_local_rotation.y;
+            pz[lane] = corrected_local_rotation.z;
+            pw[lane] = corrected_local_rotation.w;	
         }
 
         ozz::animation::BlendingJob::Layer layers[1];
@@ -407,6 +399,52 @@ void OzzGD::add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref
         // Blends.
         if (!add_job.Run()) {
             return;
+        }
+    }
+}
+
+void OzzGD::counterpose(Ref<OzzAnimationState> base, Quaternion global_rotation, int global_bone) {
+    if (global_bone > -1 && global_bone < bones) {
+        // Converts from local space to model space
+        ozz::vector<ozz::math::Float4x4> base_models;
+        base_models.resize(skeleton->num_joints());
+        ozz::animation::LocalToModelJob ltm_job;
+        ltm_job.skeleton = skeleton.get();
+        ltm_job.input = make_span(base->locals);
+        ltm_job.output = make_span(base_models);
+        if (!ltm_job.Run()) return;
+
+        ozz::span<const int16_t> parents = skeleton->joint_parents();
+        int block = global_bone / 4;
+        int lane = global_bone % 4;
+        int parent = parents[global_bone];
+
+        if (parent != ozz::animation::Skeleton::kNoParent) {
+            ozz::math::Float4x4 parent_model_matrix = base_models[parent]; //ozz::math::Invert(base_models[parent]);
+            ozz::math::SimdFloat4 r = ozz::math::ToQuaternion(parent_model_matrix);
+            float* rp = reinterpret_cast<float*>(&r);
+            ozz::math::Quaternion parent_model_rotation = ozz::math::Quaternion(rp[0], rp[1], rp[2], rp[3]);
+            ozz::math::Quaternion inv_parent_rotation = ozz::math::Conjugate(parent_model_rotation);
+            
+            // 3. Define your desired absolute model space rotation (e.g., Identity for no rotation)
+            // Transform3D global_rest = rests[global_bone];
+            Quaternion q = global_rotation; //global_rest.basis.get_rotation_quaternion();
+            ozz::math::Quaternion desired_model_rotation = ozz::math::Quaternion(q.x, q.y, q.z, q.w);
+
+            // 4. Calculate the corrected local rotation
+            // Note: ozz-animation quaternion multiplication order is Left * Right
+            ozz::math::Quaternion corrected_local_rotation = inv_parent_rotation * desired_model_rotation;
+
+            float* px = reinterpret_cast<float*>(&base->locals[block].rotation.x);
+            float* py = reinterpret_cast<float*>(&base->locals[block].rotation.y);
+            float* pz = reinterpret_cast<float*>(&base->locals[block].rotation.z);
+            float* pw = reinterpret_cast<float*>(&base->locals[block].rotation.w);
+
+            // Overwrite the specific lane
+            px[lane] = corrected_local_rotation.x;
+            py[lane] = corrected_local_rotation.y;
+            pz[lane] = corrected_local_rotation.z;
+            pw[lane] = corrected_local_rotation.w;	
         }
     }
 }
@@ -971,6 +1009,7 @@ void OzzGD::_bind_methods() {
     ClassDB::bind_method(D_METHOD("new_state_bin", "data"), &OzzGD::new_state_bin);
     ClassDB::bind_method(D_METHOD("blend2", "output", "a", "b", "blend_amount"), &OzzGD::blend2);
     ClassDB::bind_method(D_METHOD("add2", "output", "a", "b", "blend_amount", "global"), &OzzGD::add2, DEFVAL(-1));
+    ClassDB::bind_method(D_METHOD("counterpose", "output", "global_rotation", "global_bone"), &OzzGD::counterpose, DEFVAL(-1));
     ClassDB::bind_method(D_METHOD("convert_animation_to_ozz", "animation", "extract_motion", "root_bone", "use_scale", "delta"), &OzzGD::convert_animation_to_ozz, DEFVAL(NULL), DEFVAL(false), DEFVAL(0), DEFVAL(false));
     ClassDB::bind_method(D_METHOD("apply_animation_state", "animation_state"), &OzzGD::apply_animation_state);
     ClassDB::bind_method(D_METHOD("update_skeleton", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton);

@@ -208,9 +208,45 @@ public:
 		}
 	}
 
+	void set_joint_pose(int joint, Transform3D pose) {
+		if (joint > -1 && joint < locals.size()*4) {
+			int block = joint / 4;
+			int lane = joint % 4;
+			Quaternion q = pose.get_basis().get_rotation_quaternion();
+            ozz::math::Quaternion corrected_local_rotation = ozz::math::Quaternion(q.x, q.y, q.z, q.w);
+            float* px = reinterpret_cast<float*>(&locals[block].rotation.x);
+            float* py = reinterpret_cast<float*>(&locals[block].rotation.y);
+            float* pz = reinterpret_cast<float*>(&locals[block].rotation.z);
+            float* pw = reinterpret_cast<float*>(&locals[block].rotation.w);
+            // Overwrite the specific lane
+            px[lane] = corrected_local_rotation.x;
+            py[lane] = corrected_local_rotation.y;
+            pz[lane] = corrected_local_rotation.z;
+            pw[lane] = corrected_local_rotation.w;	
+		}
+	}
+
+	Transform3D get_joint_pose(int joint) {
+		Transform3D out;
+		if (joint > -1 && joint < locals.size()*4) {
+			int block = joint / 4;
+			int lane = joint % 4;
+            float* px = reinterpret_cast<float*>(&locals[block].rotation.x);
+            float* py = reinterpret_cast<float*>(&locals[block].rotation.y);
+            float* pz = reinterpret_cast<float*>(&locals[block].rotation.z);
+            float* pw = reinterpret_cast<float*>(&locals[block].rotation.w);
+            // Overwrite the specific lane
+            Quaternion q = Quaternion(px[lane], py[lane], pz[lane], pw[lane]);
+			out.set_basis(Basis(q));
+		}
+		return out;
+	}
+
 	static void _bind_methods() {
 		ClassDB::bind_method(D_METHOD("set_joint_weights", "weights"), &OzzAnimationState::set_joint_weights, DEFVAL(PackedFloat32Array()));
 		ClassDB::bind_method(D_METHOD("get_transform"), &OzzAnimationState::get_transform);
+		ClassDB::bind_method(D_METHOD("set_joint_pose", "joint", "pose"), &OzzAnimationState::set_joint_pose);
+		ClassDB::bind_method(D_METHOD("get_joint_pose", "joint"), &OzzAnimationState::get_joint_pose);
 		ClassDB::bind_method(D_METHOD("get_duration"), &OzzAnimationState::get_duration);
 		ClassDB::bind_method(D_METHOD("get_time_ratio"), &OzzAnimationState::get_time_ratio);
 		ClassDB::bind_method(D_METHOD("set_loop", "loop"), &OzzAnimationState::set_loop);
@@ -290,6 +326,8 @@ public:
 	void blend2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref<OzzAnimationState> blend, float blend_amount);
 
 	void add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref<OzzAnimationState> add, float blend_amount, int global_bone = -1);
+	
+	void counterpose(Ref<OzzAnimationState> base, Quaternion global_rotation, int global_bone);
 
 	void _convert_f4x4_to_soa(ozz::vector<ozz::math::Float4x4> &in, ozz::vector<ozz::math::SoaTransform> &out, bool zero_translation = false);
 
