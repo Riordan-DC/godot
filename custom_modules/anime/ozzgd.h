@@ -1,6 +1,8 @@
 #ifndef OZZGD_CLASS_H
 #define OZZGD_CLASS_H
 
+#pragma once
+
 /*
 PITFALLS:
 1. Ozz Animation fallback. If there is no keyframe for a track it will default to the identity. For example: Missing position track, ok, its ZEROs now. This sucks.
@@ -23,8 +25,6 @@ PITFALLS:
 //	2. each frame of that animation becomes an additive pose in an array
 // TODO: Remove first frame of delta animation??
 
-#include "utils.h"
-
 #include "ozz/animation/offline/additive_animation_builder.h"
 #include "ozz/animation/offline/animation_builder.h"
 #include "ozz/animation/offline/animation_optimizer.h"
@@ -41,9 +41,13 @@ PITFALLS:
 #include "ozz/animation/runtime/skeleton.h"
 #include "ozz/animation/runtime/track_sampling_job.h"
 #include "ozz/animation/runtime/track_triggering_job.h"
+#include "ozz/animation/runtime/ik_aim_job.h"
+#include "ozz/animation/runtime/ik_two_bone_job.h"
 #include "ozz/base/io/archive.h"
 #include "ozz/base/io/stream.h"
+#include "ozz/base/maths/box.h"
 #include "ozz/base/log.h"
+#include "ozz/base/maths/simd_quaternion.h"
 #include "ozz/base/maths/simd_math.h"
 #include "ozz/base/maths/soa_float4x4.h"
 #include "ozz/base/maths/soa_transform.h"
@@ -52,6 +56,8 @@ PITFALLS:
 #include "ozz/options/options.h"
 #include "ozz/samples/motion_utils.h"
 #include "ozz/samples/utils.h"
+
+#include "anime_utils.h"
 
 // We don't need windows.h in this plugin but many others do and it throws up on itself all the time
 // So best to include it and make sure CI warns us when we use something Microsoft took for their own goals....
@@ -292,9 +298,13 @@ public:
 	float get_tick_time() { return tick_time; }
 	void set_tick_time(float p_tick_time) { tick_time = p_tick_time; }
 
+	bool ik_enabled = false;
+	bool get_ik_enabled() { return ik_enabled; }
+	void set_ik_enabled(bool v) { ik_enabled = v; }
+
 	ozz::vector<ozz::math::SoaTransform> from_locals;
 	ozz::vector<ozz::math::SoaTransform> to_locals;
-	ozz::vector<ozz::math::SoaTransform> interpolated_locals;
+	ozz::vector<ozz::math::SoaTransform> locals;
 	ozz::vector<ozz::math::Float4x4> models;
 
 	// For curving root motion animations
@@ -320,6 +330,10 @@ public:
 	Ref<OzzAnimationState> new_state_bin(PackedByteArray data);
 
 	void apply_animation_state(Ref<OzzAnimationState> state);
+	
+	void run_ik();
+	void ik_look_at_chain(Vector3 target, PackedInt32Array joints_chain, Vector3 eyes_offset, float chain_weight, float joint_weight = 0.35f);
+	void ik_2bone();
 
 	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false, bool sample_events = true);
 

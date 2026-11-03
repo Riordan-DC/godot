@@ -143,9 +143,9 @@ void ComputePostureBounds(ozz::span<const ozz::math::Float4x4> _models,
 	return;
 }
 
-void MultiplySoATransformQuaternion(
-	int _index, const ozz::math::SimdQuaternion &_quat,
-	const ozz::span<ozz::math::SoaTransform> &_transforms)
+void ozz::sample::MultiplySoATransformQuaternion(
+    int _index, const ozz::math::SimdQuaternion& _quat,
+    const ozz::span<ozz::math::SoaTransform>& _transforms)
 {
 	assert(_index >= 0 && static_cast<size_t>(_index) < _transforms.size() * 4 &&
 		   "joint index out of bound.");
