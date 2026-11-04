@@ -173,7 +173,7 @@ void OzzGD::apply_animation_state(Ref<OzzAnimationState> state) {
 	memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
 }
 
-void OzzGD::ik_look_at_chain(Vector3 target, PackedInt32Array joints_chain, Vector3 eyes_offset, float chain_weight, float joint_weight) {
+void OzzGD::ik_look_at_chain(Vector3 target, PackedInt32Array joints_chain, Vector3 eyes_offset, Vector3 up, Vector3 forward, float chain_weight, float joint_weight) {
 	// IK aim job setup.
 	ozz::animation::IKAimJob ik_job;
 	// Pole vector and target position are constant for the whole algorithm, in
@@ -209,10 +209,14 @@ void OzzGD::ik_look_at_chain(Vector3 target, PackedInt32Array joints_chain, Vect
 		// Setups the model-space matrix of the joint being processed by IK.
 		ik_job.joint = &models[joint];
 
-		const auto kJointChainLocalUpAxis = ozz::math::simd_float4::y_axis();
+		// const auto kJointChainLocalUpAxis = ozz::math::simd_float4::y_axis();
 		// Forward vector in head local-space.
-		const ozz::math::SimdFloat4 kHeadForward = ozz::math::simd_float4::z_axis();
-		// Setups joint local-space up vector.
+		// const ozz::math::SimdFloat4 kHeadForward = ozz::math::simd_float4::z_axis();
+
+        const auto kJointChainLocalUpAxis = ozz::math::simd_float4::Load(up.x, up.y, up.z, 0.0f);
+        const auto kHeadForward = ozz::math::simd_float4::Load(forward.x, forward.y, forward.z, 0.0f);
+		
+        // Setups joint local-space up vector.
 		ik_job.up = kJointChainLocalUpAxis;
 
 		// Setups weights of IK job.
@@ -1154,5 +1158,5 @@ void OzzGD::_bind_methods() {
 
 	ADD_SIGNAL(MethodInfo("ik_event"));
 
-	ClassDB::bind_method(D_METHOD("ik_look_at_chain", "target", "chain", "offset", "weight", "joint_weight"), &OzzGD::ik_look_at_chain, DEFVAL(0.5f));
+	ClassDB::bind_method(D_METHOD("ik_look_at_chain", "target", "chain", "offset", "up", "forward", "weight", "joint_weight"), &OzzGD::ik_look_at_chain, DEFVAL(0.5f));
 }

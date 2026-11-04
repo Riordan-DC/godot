@@ -4,25 +4,6 @@
 #pragma once
 
 #include "ozz/animation/runtime/skeleton.h"
-/*
-#include "ozz/animation/offline/additive_animation_builder.h"
-#include "ozz/animation/offline/animation_builder.h"
-#include "ozz/animation/offline/animation_optimizer.h"
-#include "ozz/animation/offline/motion_extractor.h"
-#include "ozz/animation/offline/raw_animation.h"
-#include "ozz/animation/offline/raw_skeleton.h"
-#include "ozz/animation/offline/skeleton_builder.h"
-#include "ozz/animation/offline/track_builder.h"
-#include "ozz/animation/offline/track_optimizer.h"
-#include "ozz/animation/runtime/animation.h"
-#include "ozz/animation/runtime/blending_job.h"
-#include "ozz/animation/runtime/local_to_model_job.h"
-#include "ozz/animation/runtime/sampling_job.h"
-#include "ozz/animation/runtime/track_sampling_job.h"
-#include "ozz/animation/runtime/track_triggering_job.h"
-#include "ozz/samples/motion_utils.h"
-*/
-
 #include "ozz/base/maths/simd_math.h"
 #include "ozz/base/maths/soa_float4x4.h"
 #include "ozz/base/maths/soa_transform.h"
@@ -31,7 +12,6 @@
 #include "ozz/base/maths/simd_quaternion.h"
 #include "ozz/base/containers/vector.h"
 #include "ozz/options/options.h"
-//#include "ozz/samples/utils.h"
 
 #include "core/typedefs.h"
 #include "core/variant/variant.h"
@@ -52,9 +32,5 @@ struct WeightSetupIterator {
 	ozz::vector<ozz::math::SimdFloat4> *weights;
 	float weight_setting;
 };
-
-// void MultiplySoATransformQuaternion2(
-// 	int _index, const ozz::math::SimdQuaternion &_quat,
-// 	const ozz::span<ozz::math::SoaTransform> &_transforms);
 
 #endif

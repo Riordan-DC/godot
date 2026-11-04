@@ -332,7 +332,7 @@ public:
 	void apply_animation_state(Ref<OzzAnimationState> state);
 	
 	void run_ik();
-	void ik_look_at_chain(Vector3 target, PackedInt32Array joints_chain, Vector3 eyes_offset, float chain_weight, float joint_weight = 0.5f);
+	void ik_look_at_chain(Vector3 target, PackedInt32Array joints_chain, Vector3 eyes_offset, Vector3 up, Vector3 forward, float chain_weight, float joint_weight = 0.5f);
 	void ik_2bone();
 
 	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false, bool sample_events = true);
