@@ -209,9 +209,9 @@ void OzzGD::ik_look_at_chain(Vector3 target, PackedInt32Array joints_chain, Vect
 		// Setups the model-space matrix of the joint being processed by IK.
 		ik_job.joint = &models[joint];
 
-		const auto kJointChainLocalUpAxis = ozz::math::simd_float4::z_axis();
+		const auto kJointChainLocalUpAxis = ozz::math::simd_float4::y_axis();
 		// Forward vector in head local-space.
-		const ozz::math::SimdFloat4 kHeadForward = ozz::math::simd_float4::y_axis();
+		const ozz::math::SimdFloat4 kHeadForward = ozz::math::simd_float4::z_axis();
 		// Setups joint local-space up vector.
 		ik_job.up = kJointChainLocalUpAxis;
 
@@ -1154,5 +1154,5 @@ void OzzGD::_bind_methods() {
 
 	ADD_SIGNAL(MethodInfo("ik_event"));
 
-	ClassDB::bind_method(D_METHOD("ik_look_at_chain", "target", "chain", "offset", "weight", "joint_weight"), &OzzGD::ik_look_at_chain, DEFVAL(0.35f));
+	ClassDB::bind_method(D_METHOD("ik_look_at_chain", "target", "chain", "offset", "weight", "joint_weight"), &OzzGD::ik_look_at_chain, DEFVAL(0.5f));
 }
