@@ -157,23 +157,32 @@ public:
 		int num_soa_joints = joint_weights.size();
 		int num_weights = weights.size();
 
-		for (int i = 0; i < num_soa_joints; i++) {
-			int offset = i * 4;
-			float x, y, z, w = 0.f;
-			if (offset < num_weights) {
-				x = weights[offset];
-			}
-			if ((offset + 1) < num_weights) {
-				y = weights[offset + 1];
-			}
-			if ((offset + 2) < num_weights) {
-				z = weights[offset + 2];
-			}
-			if ((offset + 3) < num_weights) {
-				w = weights[offset + 3];
-			}
-			joint_weights[i] = ozz::math::simd_float4::Load(x, y, z, w);
+		for (int joint = 0; joint < num_weights; joint++) {
+			ozz::math::SimdFloat4& soa_weight = joint_weights.at(joint / 4);
+
+			soa_weight = ozz::math::SetI(
+				soa_weight, ozz::math::simd_float4::Load1(weights[joint]),
+				joint % 4);
 		}
+		
+
+		// for (int i = 0; i < num_soa_joints; i++) {
+		// 	int offset = i * 4;
+		// 	float x, y, z, w = 0.f;
+		// 	if (offset < num_weights) {
+		// 		x = weights[offset];
+		// 	}
+		// 	if ((offset + 1) < num_weights) {
+		// 		y = weights[offset + 1];
+		// 	}
+		// 	if ((offset + 2) < num_weights) {
+		// 		z = weights[offset + 2];
+		// 	}
+		// 	if ((offset + 3) < num_weights) {
+		// 		w = weights[offset + 3];
+		// 	}
+		// 	joint_weights[i] = ozz::math::simd_float4::Load(x, y, z, w);
+		// }
 	}
 
 	void copy_pose(Ref<OzzAnimationState> as) {
@@ -337,11 +346,11 @@ public:
 
 	bool play_animation(Ref<OzzAnimationState> state, float delta, bool update_cache = true, bool sample_motion = false, bool sample_events = true);
 
-	void blend2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref<OzzAnimationState> blend, float blend_amount);
+	void blend2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref<OzzAnimationState> blend, float blend_amount = 1.0f, bool partial = false);
 
 	void add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref<OzzAnimationState> add, float blend_amount, int global_bone = -1);
 	
-	void counterpose(Ref<OzzAnimationState> base, Quaternion global_rotation, int global_bone);
+	void counterpose(Ref<OzzAnimationState> base, Quaternion global_rotation, int global_bone, float blend);
 
 	void _convert_f4x4_to_soa(ozz::vector<ozz::math::Float4x4> &in, ozz::vector<ozz::math::SoaTransform> &out, bool zero_translation = false);
 

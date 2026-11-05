@@ -265,7 +265,7 @@ bool OzzGD::play_animation(Ref<OzzAnimationState> state, float delta, bool updat
 	}
 
 	int loops = 0;
-	if (delta > 0.f) { // dont call controller.update with delta 0. it makes the prev ratio == current ratio. which is bad for track triggering
+	if (fabs(delta) > 0.f) { // dont call controller.update with delta 0. it makes the prev ratio == current ratio. which is bad for track triggering
 		loops = state->controller.Update(*state->animation, delta);
 	}
 
@@ -364,21 +364,26 @@ bool OzzGD::play_animation(Ref<OzzAnimationState> state, float delta, bool updat
 	return true;
 }
 
-void OzzGD::blend2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref<OzzAnimationState> blend, float blend_amount) {
+void OzzGD::blend2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref<OzzAnimationState> blend, float blend_amount, bool partial) {
 	if (output.is_null() || base.is_null() || blend.is_null()) {
 		return;
 	}
+
+	// a partial blend uses the joint weights
+
 	ozz::animation::BlendingJob::Layer layers[2];
 
 	layers[0].transform = make_span(base->locals);
 	layers[0].weight = 1.0f - blend_amount;
-	if (!base->joint_weights.empty()) {
+	if (partial) {
+		layers[0].weight = 1.0f;
 		layers[0].joint_weights = make_span(base->joint_weights);
 	}
 
 	layers[1].transform = make_span(blend->locals);
 	layers[1].weight = blend_amount;
-	if (!blend->joint_weights.empty()) {
+	if (partial) {
+		layers[1].weight = 1.0f;
 		layers[1].joint_weights = make_span(blend->joint_weights);
 	}
 
@@ -493,7 +498,8 @@ void OzzGD::add2(Ref<OzzAnimationState> output, Ref<OzzAnimationState> base, Ref
 	}
 }
 
-void OzzGD::counterpose(Ref<OzzAnimationState> base, Quaternion global_rotation, int global_bone) {
+void OzzGD::counterpose(Ref<OzzAnimationState> base, Quaternion global_rotation, int global_bone, float blend) {
+	if (blend <= 0.0001) { return; }
 	if (global_bone > -1 && global_bone < bones) {
 		// Converts from local space to model space
 		ozz::vector<ozz::math::Float4x4> base_models;
@@ -522,15 +528,17 @@ void OzzGD::counterpose(Ref<OzzAnimationState> base, Quaternion global_rotation,
 			// Transform3D global_rest = rests[global_bone];
 			Quaternion q = global_rotation; //global_rest.basis.get_rotation_quaternion();
 			ozz::math::Quaternion desired_model_rotation = ozz::math::Quaternion(q.x, q.y, q.z, q.w);
-
-			// 4. Calculate the corrected local rotation
-			// Note: ozz-animation quaternion multiplication order is Left * Right
-			ozz::math::Quaternion corrected_local_rotation = inv_parent_rotation * desired_model_rotation;
-
+			
 			float *px = reinterpret_cast<float *>(&base->locals[block].rotation.x);
 			float *py = reinterpret_cast<float *>(&base->locals[block].rotation.y);
 			float *pz = reinterpret_cast<float *>(&base->locals[block].rotation.z);
 			float *pw = reinterpret_cast<float *>(&base->locals[block].rotation.w);
+			ozz::math::Quaternion local_rotation = ozz::math::Quaternion(px[lane], py[lane], pz[lane], pw[lane]);
+			
+			// 4. Calculate the corrected local rotation
+			// Note: ozz-animation quaternion multiplication order is Left * Right
+			ozz::math::Quaternion corrected_local_rotation = inv_parent_rotation * desired_model_rotation;
+			corrected_local_rotation = ozz::math::Lerp(local_rotation, corrected_local_rotation, blend);
 
 			// Overwrite the specific lane
 			px[lane] = corrected_local_rotation.x;
@@ -1119,9 +1127,9 @@ void OzzGD::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_names"), &OzzGD::get_names);
 	ClassDB::bind_method(D_METHOD("new_state"), &OzzGD::new_state);
 	ClassDB::bind_method(D_METHOD("new_state_bin", "data"), &OzzGD::new_state_bin);
-	ClassDB::bind_method(D_METHOD("blend2", "output", "a", "b", "blend_amount"), &OzzGD::blend2);
+	ClassDB::bind_method(D_METHOD("blend2", "output", "a", "b", "blend_amount", "partial"), &OzzGD::blend2, DEFVAL(1.0f), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("add2", "output", "a", "b", "blend_amount", "global"), &OzzGD::add2, DEFVAL(-1));
-	ClassDB::bind_method(D_METHOD("counterpose", "output", "global_rotation", "global_bone"), &OzzGD::counterpose, DEFVAL(-1));
+	ClassDB::bind_method(D_METHOD("counterpose", "output", "global_rotation", "global_bone", "blend"), &OzzGD::counterpose, DEFVAL(-1), DEFVAL(1.0f));
 	ClassDB::bind_method(D_METHOD("convert_animation_to_ozz", "animation", "extract_motion", "root_bone", "use_scale", "delta"), &OzzGD::convert_animation_to_ozz, DEFVAL(NULL), DEFVAL(false), DEFVAL(0), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("apply_animation_state", "animation_state"), &OzzGD::apply_animation_state);
 	ClassDB::bind_method(D_METHOD("update_skeleton", "skeleton_rid", "visibility_notifier_rid"), &OzzGD::update_skeleton);
