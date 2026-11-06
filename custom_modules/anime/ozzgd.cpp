@@ -169,6 +169,7 @@ void OzzGD::apply_animation_state(Ref<OzzAnimationState> state) {
 		memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
 		started = true;
 	}
+	memcpy(locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
 	memcpy(from_locals.data(), to_locals.data(), to_locals.size() * sizeof(ozz::math::SoaTransform));
 	memcpy(to_locals.data(), state->locals.data(), state->locals.size() * sizeof(ozz::math::SoaTransform));
 }
@@ -985,13 +986,7 @@ void OzzGD::update_skeleton_interpolated(float delta, RID skeleton_rid, RID visi
 		// Only update the bones that are bound
 		int bone = binds[i];
 		ozz::math::Float4x4 m = models[bone];
-		Transform3D pose = Transform3D(
-				ozz::math::GetX(m.cols[0]), ozz::math::GetX(m.cols[1]), ozz::math::GetX(m.cols[2]),
-				ozz::math::GetY(m.cols[0]), ozz::math::GetY(m.cols[1]), ozz::math::GetY(m.cols[2]),
-				ozz::math::GetZ(m.cols[0]), ozz::math::GetZ(m.cols[1]), ozz::math::GetZ(m.cols[2]),
-				ozz::math::GetX(m.cols[3]), ozz::math::GetY(m.cols[3]), ozz::math::GetZ(m.cols[3])
-
-		);
+		Transform3D pose = ozz_to_godot_xform(m);
 		aabb = aabb.expand(pose.origin);
 		RenderingServer::get_singleton()->skeleton_bone_set_transform(skeleton_rid, i, pose * static_cast<Transform3D>(bind_poses[bone]));
 	}
@@ -999,10 +994,17 @@ void OzzGD::update_skeleton_interpolated(float delta, RID skeleton_rid, RID visi
 }
 
 void OzzGD::update_skeleton(RID skeleton_rid, RID visibility_notifier_rid) {
+	if (from_locals.size() != skeleton->num_soa_joints()) {
+		from_locals.resize(skeleton->num_soa_joints());
+		to_locals.resize(skeleton->num_soa_joints());
+		locals.resize(skeleton->num_soa_joints());
+		models.resize(skeleton->num_joints());
+	}
+
 	// Converts from local space to model space matrices.
 	ozz::animation::LocalToModelJob ltm_job;
 	ltm_job.skeleton = skeleton.get();
-	ltm_job.input = make_span(to_locals);
+	ltm_job.input = make_span(locals);
 	ltm_job.output = make_span(models);
 	if (!ltm_job.Run()) {
 		return;
